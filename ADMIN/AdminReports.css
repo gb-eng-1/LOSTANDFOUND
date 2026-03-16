@@ -1,0 +1,274 @@
+@import url("AdminDashboard.css");
+
+/* Reports page overrides and additions */
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #111827;
+}
+
+/* Lost Items header: title + All Items text + Filter dropdowns */
+.reports-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.reports-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.reports-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.reports-tab-text {
+  min-width: 100px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background-color: #f3f4f6;
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  border-bottom: 2px solid #8b0000;
+  cursor: default;
+}
+
+.reports-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reports-tab {
+  min-width: 100px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background-color: #f3f4f6;
+  color: #374151;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.reports-tab:hover {
+  background-color: #e5e7eb;
+}
+
+.reports-tab.active {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  color: #111827;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  border-bottom: 2px solid #8b0000;
+}
+
+.reports-filter {
+  position: relative;
+}
+
+.reports-filter-select {
+  min-width: 180px;
+  padding: 8px 34px 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background-color: #f3f4f6;
+  font-size: 13px;
+  color: #374151;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+}
+
+.reports-filter::after {
+  content: "▾";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: #4b5563;
+  pointer-events: none;
+}
+
+/* Reports table card */
+.reports-card {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Table row dividers – strict horizontal lines between every row */
+.reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.reports-table thead {
+  background-color: #f9fafb;
+}
+
+.reports-table th,
+.reports-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.reports-table th {
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.reports-table th:not(:last-child),
+.reports-table td:not(:last-child) {
+  border-right: 1px solid #e5e7eb;
+}
+
+.reports-table thead th {
+  border-bottom: 1px solid #d1d5db;
+}
+
+.reports-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.reports-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.reports-table tbody tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+.reports-table .th-sub {
+  font-weight: 400;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Recent Activity – blue underlined reference ID links */
+.recent-ref-link {
+  color: #3b82f6;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.recent-ref-link:hover {
+  color: #2563eb;
+}
+
+.recent-item .recent-text {
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* Reports Action column: View (blue) + Cancel (red) – styled buttons */
+.reports-action-cell {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Base shared styles for both action buttons */
+.reports-action-cell .reports-btn,
+.reports-action-cell .reports-btn-view,
+.reports-action-cell .reports-btn-cancel {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px 14px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  font-family: inherit !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
+  line-height: 1.4 !important;
+  box-sizing: border-box !important;
+}
+
+/* View button – blue */
+.reports-action-cell .reports-btn-view {
+  background-color: #1976d2 !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.reports-action-cell .reports-btn-view:hover {
+  background-color: #1565c0 !important;
+  box-shadow: 0 1px 3px rgba(21, 101, 192, 0.4) !important;
+}
+
+/* Cancel button – red (explicit overrides to beat any global button resets) */
+.reports-action-cell button.reports-btn-cancel {
+  background-color: #b91c1c !important;
+  color: #ffffff !important;
+  border: none !important;
+  outline: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.reports-action-cell button.reports-btn-cancel:hover {
+  background-color: #991b1b !important;
+  box-shadow: 0 1px 3px rgba(185, 28, 28, 0.4) !important;
+}
+
+.reports-action-cell button.reports-btn-cancel:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+/* Reports – mobile responsive */
+@media (max-width: 900px) {
+  .reports-header-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .reports-header-controls {
+    flex-wrap: wrap;
+  }
+  .reports-tab {
+    min-height: 44px;
+  }
+  .reports-filter-select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+  }
+  .reports-table {
+    font-size: 12px;
+  }
+  .reports-table th,
+  .reports-table td {
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .reports-tab {
+    flex: 1;
+    min-width: 0;
+  }
+}

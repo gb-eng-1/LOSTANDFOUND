@@ -1,0 +1,273 @@
+/* Help and Support - UB Lost and Found */
+
+html { overflow-x: hidden; }
+body { font-family: 'Poppins', sans-serif; background: #f0f2f5; color: #111; min-height: 100vh; overflow-x: hidden; }
+.layout { overflow: hidden; }
+.main { overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
+
+.hs-wrap {
+  padding: 24px 28px 32px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.hs-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 20px;
+}
+
+/* Two-column grid */
+.hs-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Cards */
+.hs-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+}
+.hs-card:last-child { margin-bottom: 0; }
+
+.hs-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 16px;
+}
+
+/* Steps list */
+.hs-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.hs-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.hs-step-icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  border: 1.5px solid #8b0000;
+  color: #8b0000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  margin-top: 1px;
+}
+.hs-step-body {
+  flex: 1;
+  min-width: 0;
+}
+.hs-step-body p {
+  margin: 0;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.55;
+}
+.hs-highlight {
+  color: #8b0000;
+  font-weight: 600;
+}
+
+/* ATM card */
+.hs-atm-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 8px;
+}
+.hs-atm-list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hs-atm-list li {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.55;
+}
+.hs-atm-sublist {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: disc;
+}
+.hs-atm-sublist li {
+  font-size: 12.5px;
+  color: #4b5563;
+}
+
+/* Map card */
+.hs-card-map { padding: 0; overflow: hidden; }
+.hs-map-embed { width: 100%; line-height: 0; }
+.hs-map-embed iframe {
+  width: 100%;
+  height: 200px;
+  border: 0;
+  display: block;
+}
+.hs-office-info {
+  padding: 14px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hs-office-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+}
+.hs-office-label {
+  font-weight: 700;
+  color: #111827;
+  min-width: 68px;
+  flex-shrink: 0;
+}
+.hs-office-value {
+  color: #374151;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.5;
+}
+.hs-office-open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.hs-open-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+.hs-open-text {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 500;
+  flex: 1;
+}
+.hs-directions-btn {
+  padding: 6px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  background: #fff;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.hs-directions-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #111827;
+}
+
+/* What to Bring card */
+.hs-card-bring { padding: 18px 22px 20px; }
+.hs-bring-row {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  padding-top: 4px;
+}
+.hs-bring-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #374151;
+}
+.hs-bring-icon {
+  font-size: 18px;
+  color: #9ca3af;
+  line-height: 1;
+}
+.hs-bring-label {
+  font-weight: 500;
+}
+
+/* Contact card */
+.hs-card-contact {
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+.hs-contact-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+}
+.hs-contact-divider {
+  width: 1px;
+  background: #e5e7eb;
+  align-self: stretch;
+}
+.hs-contact-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: #374151;
+  flex-shrink: 0;
+}
+.hs-contact-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.hs-contact-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+.hs-contact-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8b0000;
+  text-decoration: none;
+}
+.hs-contact-value:hover { text-decoration: underline; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .hs-grid {
+    grid-template-columns: 1fr;
+  }
+}

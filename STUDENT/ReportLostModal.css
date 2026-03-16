@@ -1,0 +1,397 @@
+/* Item Lost Report Modal */
+.report-lost-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+.report-lost-modal.open {
+  opacity: 1;
+  visibility: visible;
+}
+.report-lost-modal[aria-hidden="false"] { opacity: 1; visibility: visible; }
+.report-lost-modal[aria-hidden="true"] { opacity: 0; visibility: hidden; }
+
+.report-lost-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.report-lost-modal-dialog {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.report-lost-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #8b0000;
+  flex-shrink: 0;
+}
+
+.report-lost-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+}
+
+.report-lost-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: background 0.2s;
+}
+.report-lost-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.report-lost-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.report-lost-modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.report-lost-field {
+  margin-bottom: 16px;
+}
+.report-lost-field:last-child { margin-bottom: 0; }
+
+.report-lost-field label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.report-lost-field .required { color: #dc2626; }
+
+.report-lost-field input[type="text"],
+.report-lost-field input[type="date"],
+.report-lost-field select,
+.report-lost-field textarea {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #111;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.report-lost-field input:focus,
+.report-lost-field select:focus,
+.report-lost-field textarea:focus {
+  border-color: #8b0000;
+}
+.report-lost-field textarea { resize: vertical; min-height: 72px; }
+
+.report-lost-field select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+.report-lost-file-wrap { position: relative; }
+.report-lost-file-input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+}
+.report-lost-file-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  min-height: 44px;
+}
+.report-lost-file-name {
+  font-size: 14px;
+  color: #6b7280;
+}
+.report-lost-file-clear {
+  display: none;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #e5e7eb;
+  border-radius: 50%;
+  color: #6b7280;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.report-lost-file-clear:hover { background: #d1d5db; color: #374151; }
+.report-lost-file-display.has-file .report-lost-file-clear { display: flex; }
+.report-lost-file-display.has-file .report-lost-file-name { color: #111; }
+
+.report-lost-modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 24px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.report-lost-btn {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  border: none;
+}
+
+.report-lost-btn-cancel {
+  background: #e5e7eb;
+  color: #374151;
+}
+.report-lost-btn-cancel:hover {
+  background: #d1d5db;
+  color: #111;
+}
+
+.report-lost-btn-next {
+  background: #8b0000;
+  color: #fff;
+}
+.report-lost-btn-next:hover {
+  background: #6d0000;
+  color: #fff;
+}
+
+.report-lost-btn-next:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.report-lost-btn-back {
+  background: #e5e7eb;
+  color: #374151;
+}
+.report-lost-btn-back:hover {
+  background: #d1d5db;
+  color: #111;
+}
+
+.report-lost-btn-submit {
+  background: #8b0000;
+  color: #fff;
+}
+.report-lost-btn-submit:hover {
+  background: #6d0000;
+  color: #fff;
+}
+.report-lost-btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Steps */
+.report-lost-step {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.report-lost-step.report-lost-step-active {
+  display: flex;
+}
+
+.report-lost-hint {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 8px;
+}
+
+/* Confirmation step */
+.report-lost-confirm-body {
+  padding: 20px 24px;
+}
+
+.report-lost-confirm-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.report-lost-confirm-row {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.report-lost-confirm-label {
+  font-weight: 500;
+  color: #374151;
+  min-width: 120px;
+}
+
+.report-lost-confirm-value {
+  color: #111;
+}
+
+.report-lost-checkbox-wrap {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.report-lost-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+}
+
+.report-lost-checkbox-label input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.report-lost-checkbox-label input:checked + span {
+  font-weight: 500;
+}
+
+/* ─── Success Modal ─────────────────────────────────── */
+.report-success-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+.report-success-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+.report-success-dialog {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 40px 36px 32px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  position: relative;
+}
+.report-success-close {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+}
+.report-success-close:hover { color: #374151; }
+.report-success-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  font-size: 32px;
+  color: #fff;
+}
+.report-success-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px;
+}
+.report-success-message {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 10px;
+}
+.report-success-ticket {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 24px;
+  letter-spacing: 0.5px;
+}
+.report-success-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.report-lost-btn-cancel {
+  background: #fff;
+  color: #374151;
+  border: 1.5px solid #d1d5db;
+  padding: 10px 28px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.report-lost-btn-cancel:hover {
+  background: #f3f4f6;
+}

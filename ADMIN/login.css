@@ -1,0 +1,247 @@
+/* Login page - professional layout with UBBG.jpg background */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  /* Background image set in login.php inline style so url('UBBG.jpg') resolves from page URL */
+}
+
+.login-wrapper {
+  width: 100%;
+  max-width: 440px;
+}
+
+.login-box {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  padding: 48px 44px 44px;
+  width: 100%;
+}
+
+.login-title {
+  color: #8b0000;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 32px;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
+.login-error {
+  color: #b91c1c;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  text-align: center;
+  padding: 10px 12px;
+  background: #fef2f2;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+}
+
+.login-form label {
+  display: block;
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.login-form input[type="email"],
+.login-form input[type="password"] {
+  width: 100%;
+  padding: 12px 18px;
+  font-size: 1rem;
+  font-family: inherit;
+  color: #111827;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-form input[type="email"]:focus,
+.login-form input[type="password"]:focus {
+  border-color: #8b0000;
+  box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.15);
+}
+
+.login-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.remember-me input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #8b0000;
+  cursor: pointer;
+}
+
+.remember-me span {
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.forgot-link {
+  color: #6b7280;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.forgot-link:hover {
+  color: #8b0000;
+  text-decoration: underline;
+}
+
+/* Login button */
+.login-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #ffffff;
+  background-color: #8b0000;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: 0.02em;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-btn:hover {
+  background-color: #6e0000;
+  box-shadow: 0 4px 14px rgba(139, 0, 0, 0.35);
+}
+
+.login-btn:active {
+  background-color: #5a0000;
+}
+
+.login-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.25);
+}
+
+/* "Login using UB Mail" button */
+.ubmail-btn {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ubmail-btn:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.ubmail-btn:active {
+  background-color: #f3f4f6;
+}
+
+.ubmail-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.12);
+}
+
+.ubmail-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b0000;
+}
+
+/* Login – mobile responsive & dynamic */
+@media (max-width: 480px) {
+  body {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 24px;
+  }
+  .login-wrapper {
+    max-width: 100%;
+  }
+  .login-box {
+    padding: 32px 24px 28px;
+  }
+  .login-title {
+    font-size: 1.25rem;
+    margin-bottom: 24px;
+  }
+  .login-form input[type="email"],
+  .login-form input[type="password"] {
+    padding: 14px 16px;
+    min-height: 48px;
+    margin-bottom: 16px;
+  }
+  .login-btn {
+    min-height: 48px;
+    padding: 14px 20px;
+  }
+  .ubmail-btn {
+    min-height: 48px;
+    padding: 14px 16px;
+  }
+  .login-options {
+    margin-bottom: 22px;
+  }
+}
+
+@media (max-width: 360px) {
+  body {
+    padding: 12px;
+  }
+  .login-box {
+    padding: 24px 18px 22px;
+  }
+  .login-title {
+    font-size: 1.1rem;
+  }
+}

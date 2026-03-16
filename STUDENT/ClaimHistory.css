@@ -1,0 +1,171 @@
+/* Claim History - exact design match */
+
+html { overflow-x: hidden; }
+body { font-family: 'Poppins', sans-serif; background: #f5f5f5; color: #111; min-height: 100vh; overflow-x: hidden; }
+.layout { overflow: hidden; }
+.main { overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
+
+.claim-history-wrap {
+  padding: 24px 28px 32px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.page-title-claim {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 20px;
+}
+
+/* Filters: All Items button + Filter By Category */
+.claim-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.claim-filter-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  color: #374151;
+  background: #e5e7eb;
+  border: 1px solid #d1d5db;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.claim-filter-btn:hover {
+  background: #d1d5db;
+  color: #111827;
+}
+
+/* All Items: white background, red bottom border only, not clickable */
+.claim-filter-btn-all.active {
+  background: #fff;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  border-bottom: 2px solid #8b0000;
+  border-radius: 6px 6px 0 0;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}
+
+.claim-filter-btn-all.active:hover {
+  background: #fff;
+  color: #111827;
+  border-bottom-color: #8b0000;
+}
+
+.claim-filter-form {
+  margin: 0;
+}
+
+.claim-filter-select {
+  padding: 10px 36px 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
+.claim-filter-select:hover,
+.claim-filter-select:focus {
+  border-color: #d1d5db;
+  outline: none;
+}
+
+/* Card + Table */
+.claim-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.claim-card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.claim-table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.claim-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 800px;
+}
+
+.claim-table th {
+  padding: 12px 16px;
+  text-align: left;
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.claim-table td {
+  padding: 12px 16px;
+  color: #374151;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.claim-table tbody tr:last-child td { border-bottom: none; }
+.claim-table tbody tr.row-even td { background: #ffffff; }
+.claim-table tbody tr.row-odd td { background: #fafafa; }
+.claim-table tbody tr:hover td { background: #f9fafb !important; }
+
+.claim-table .table-empty {
+  color: #9ca3af;
+  text-align: center;
+  padding: 32px;
+  font-size: 14px;
+}
+
+.claim-table .action-cell {
+  white-space: nowrap;
+}
+
+.claim-table .btn-view {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  background: #3b82f6;
+  color: #fff;
+  transition: background 0.2s;
+}
+
+.claim-table .btn-view:hover {
+  background: #2563eb;
+  color: #fff;
+}

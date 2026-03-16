@@ -1,0 +1,448 @@
+/**
+ * ItemMatchedAdmin.css – Matched Items page (strict design match to screenshot)
+ */
+
+/* ── Active nav: orange background, white text ─────────────────────── */
+body.item-matched-page .nav-item.active {
+  background-color: #FFA500;
+  color: #ffffff;
+}
+body.item-matched-page .nav-item.active .nav-item-icon,
+body.item-matched-page .nav-item.active .nav-item-icon i,
+body.item-matched-page .nav-item.active .nav-item-label {
+  color: #ffffff !important;
+}
+
+/* ── Page title ─────────────────────────────────────────────────────── */
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
+/* ── Header row: tabs left, filter right ───────────────────────────── */
+.matched-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.matched-header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* ── Tabs: All Items | Guest Items – proper spacing ────────────────── */
+.matched-tabs {
+  display: inline-flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.matched-tab-text {
+  min-width: 120px;
+  padding: 10px 24px;
+  font-size: 13px;
+  font-weight: 500;
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  text-align: center;
+  display: inline-block;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  user-select: none;
+}
+
+.matched-tab-text:hover {
+  background-color: #f9fafb;
+}
+
+.matched-tab-text.matched-tab-active {
+  border-bottom-color: #8b0000;
+  border-bottom-width: 3px;
+  color: #111827;
+  font-weight: 600;
+  background-color: #f3f4f6;
+}
+
+/* ── Filter dropdown (right side) ──────────────────────────────────── */
+.matched-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.matched-filter-label {
+  display: none; /* hidden – label is inside the select placeholder */
+}
+
+.matched-filter-select {
+  min-width: 200px;
+  padding: 9px 36px 9px 14px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background-color: #ffffff;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+.matched-filter-select:focus {
+  border-color: #8b0000;
+  outline: none;
+}
+
+/* ── Card wrapper ───────────────────────────────────────────────────── */
+.matched-reports-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px 20px 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  margin-bottom: 0;
+}
+
+.matched-reports-card .inventory-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 16px;
+}
+
+/* ── Table ──────────────────────────────────────────────────────────── */
+.matched-reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+/* Header */
+.matched-reports-table thead tr {
+  background-color: #f3f4f6;
+}
+
+.matched-reports-table thead th {
+  padding: 11px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #374151;
+  text-align: left;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #d1d5db;
+  white-space: nowrap;
+}
+
+.matched-reports-table thead th:last-child {
+  border-right: none;
+  text-align: center;
+}
+
+/* Body rows */
+.matched-reports-table tbody td {
+  padding: 14px 14px;
+  font-size: 13px;
+  color: #374151;
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.matched-reports-table tbody td:last-child {
+  border-right: none;
+}
+
+.matched-reports-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Alternating rows */
+.matched-reports-table tbody tr:nth-child(odd) {
+  background-color: #ffffff;
+}
+
+.matched-reports-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+/* Overdue row */
+.matched-reports-table tbody tr.matched-row-overdue td {
+  background-color: #fef2f2 !important;
+}
+
+/* Retention cell */
+.matched-reports-table .retention-cell {
+  white-space: nowrap;
+}
+
+/* EXPIRING pill */
+.matched-pill-expiring {
+  display: inline-flex;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background-color: #eab308;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+/* ── Action cell ────────────────────────────────────────────────────── */
+.matched-reports-table .found-action-cell {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Shared button base */
+.found-btn-view,
+.found-btn-claim {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px 16px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  font-family: inherit !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
+  line-height: 1.4 !important;
+  white-space: nowrap !important;
+}
+
+/* View – blue */
+.found-btn-view {
+  background-color: #1976d2 !important;
+  color: #ffffff !important;
+}
+
+.found-btn-view:hover {
+  background-color: #1565c0 !important;
+  box-shadow: 0 1px 3px rgba(21,101,192,0.35) !important;
+}
+
+/* Claim – green (active / within retention) */
+.found-btn-claim {
+  background-color: #22c55e !important;
+  color: #ffffff !important;
+}
+
+.found-btn-claim:hover {
+  background-color: #16a34a !important;
+  box-shadow: 0 1px 3px rgba(34,197,94,0.35) !important;
+}
+
+/* Claim – grey (overdue / expired) */
+.matched-row-overdue .found-btn-claim,
+.found-btn-claim.btn-claim-expired {
+  background-color: #9ca3af !important;
+  color: #ffffff !important;
+  cursor: not-allowed !important;
+}
+
+.matched-row-overdue .found-btn-claim:hover,
+.found-btn-claim.btn-claim-expired:hover {
+  background-color: #9ca3af !important;
+  box-shadow: none !important;
+}
+
+.found-btn-claim:disabled {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+.matched-footer {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 13px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.matched-footer-text {
+  flex: 1;
+}
+
+.matched-dispose-link {
+  color: #dc2626;
+  text-decoration: underline;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.matched-dispose-link:hover {
+  color: #b91c1c;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .matched-header-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .matched-filter-select {
+    width: 100%;
+    min-width: 0;
+  }
+  .matched-reports-table {
+    font-size: 12px;
+  }
+  .matched-reports-table thead th,
+  .matched-reports-table tbody td {
+    padding: 9px 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .matched-tab-text {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ── View modal: Matching layout (image, barcode, claimants, footer) ─── */
+.view-modal-matching .view-modal-content {
+  flex-direction: column;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.view-modal-matching .view-modal-image-wrap {
+  margin-bottom: 16px;
+}
+
+.view-modal-matching .view-modal-image {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.view-modal-matching .view-modal-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.view-modal-matching .view-modal-barcode {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin-top: 8px;
+}
+
+.view-modal-matching .view-modal-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 16px 0 8px;
+}
+
+.view-modal-matching .view-modal-section-title:first-of-type {
+  margin-top: 0;
+}
+
+.view-modal-matching .view-modal-claimants {
+  min-height: 40px;
+  margin-top: 4px;
+}
+
+.view-modal-matching .view-modal-loading,
+.view-modal-matching .view-modal-empty {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.view-modal-matching .view-modal-claimants-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 24px;
+}
+
+.view-modal-matching .view-modal-claimant-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+}
+
+.view-modal-matching .view-modal-claimant-item input[type="radio"] {
+  accent-color: #8b0000;
+  cursor: pointer;
+}
+
+.view-modal-matching .view-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 8px;
+}
+
+.view-modal-matching .view-modal-btn-cancel {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.view-modal-matching .view-modal-btn-cancel:hover {
+  background: #f9fafb;
+}
+
+.view-modal-matching .view-modal-btn-next {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #ffffff;
+  background-color: #8b0000;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(139, 0, 0, 0.3);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.view-modal-matching .view-modal-btn-next:hover {
+  background-color: #6e0000;
+  box-shadow: 0 4px 12px rgba(139, 0, 0, 0.4);
+}
