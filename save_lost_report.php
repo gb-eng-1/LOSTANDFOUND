@@ -23,15 +23,15 @@ if (!is_array($data)) {
 
 require __DIR__ . '/config/database.php';
 
-// Generate REF- id for lost reports
+// Generate REF-[10 digits] id for lost reports (e.g. REF-0000000001)
 $refId = null;
 try {
-    $stmtMax = $pdo->query("SELECT MAX(CAST(SUBSTRING(id, 5) AS UNSIGNED)) AS max_num FROM items WHERE id LIKE 'REF-%' AND LENGTH(id) <= 12");
+    $stmtMax = $pdo->query("SELECT MAX(CAST(SUBSTRING(id, 5) AS UNSIGNED)) AS max_num FROM items WHERE id LIKE 'REF-%'");
     $row = $stmtMax ? $stmtMax->fetch(PDO::FETCH_ASSOC) : null;
     $nextNum = $row && $row['max_num'] !== null ? (int) $row['max_num'] + 1 : 1;
-    $refId = 'REF-' . $nextNum;
+    $refId = 'REF-' . str_pad($nextNum, 10, '0', STR_PAD_LEFT);
 } catch (PDOException $e) {
-    $refId = 'REF-' . (1000 + (int) mt_rand(0, 9999));
+    $refId = 'REF-' . str_pad(1000 + (int) mt_rand(0, 9999), 10, '0', STR_PAD_LEFT);
 }
 
 $itemDescription = trim($data['item_description'] ?? '');

@@ -195,6 +195,7 @@ function extractItemName($desc, $itemType) {
   <script defer src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/js/all.min.js"></script>
   <link rel="stylesheet" href="../ADMIN/AdminDashboard.css?v=<?php echo time(); ?>">
   <link rel="stylesheet" href="StudentDashboard.css?v=<?php echo time(); ?>">
+  <link rel="stylesheet" href="../assets/photo-picker.css?v=<?php echo time(); ?>">
   <link rel="stylesheet" href="ReportLostModal.css?v=<?php echo time(); ?>">
   <link rel="stylesheet" href="FoundItemModal.css?v=<?php echo time(); ?>">
   <link rel="stylesheet" href="NotificationsDropdown.css?v=<?php echo time(); ?>">
@@ -364,10 +365,12 @@ function extractItemName($desc, $itemType) {
     /* ── My Reports table ── */
     .reports-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .reports-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 13px; }
-    .reports-table th { padding: 10px 12px; text-align: left; background: #f9fafb; font-weight: 600; color: #374151; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
-    .reports-table td { padding: 10px 12px; color: #374151; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+    .reports-table thead tr { background: #f3f4f6; }
+    .reports-table th { padding: 12px 14px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1px solid #d1d5db; white-space: nowrap; }
+    .reports-table td { padding: 12px 14px; color: #374151; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+    .reports-table tbody tr:nth-child(even) td { background: #f9fafb; }
     .reports-table tbody tr:last-child td { border-bottom: none; }
-    .reports-table tbody tr:hover td { background: #f9fafb; }
+    .reports-table tbody tr:hover td { background: #f3f4f6; }
     .table-empty { color: #9ca3af; text-align: center; padding: 24px; }
 
     /* ── Ticket ID link ── */
@@ -832,6 +835,7 @@ function extractItemName($desc, $itemType) {
 <?php require_once __DIR__ . '/includes/found_item_modal.php'; ?>
 <?php require_once __DIR__ . '/includes/claim_item_modal.php'; ?>
 <script src="ItemDetailsModal.js?v=<?php echo time(); ?>"></script>
+<script src="../assets/photo-picker.js?v=<?php echo time(); ?>"></script>
 <script src="ReportLostModal.js?v=<?php echo time(); ?>"></script>
 <script src="FoundItemModal.js?v=<?php echo time(); ?>"></script>
 <script src="ClaimItemModal.js?v=<?php echo time(); ?>"></script>

@@ -138,33 +138,26 @@ body.item-matched-page .nav-item.active .nav-item-label {
 }
 
 .matched-reports-table thead th {
-  padding: 11px 14px;
+  padding: 12px 14px;
   font-weight: 600;
   font-size: 13px;
   color: #374151;
   text-align: left;
-  border-right: 1px solid #e5e7eb;
   border-bottom: 1px solid #d1d5db;
   white-space: nowrap;
 }
 
 .matched-reports-table thead th:last-child {
-  border-right: none;
   text-align: center;
 }
 
 /* Body rows */
 .matched-reports-table tbody td {
-  padding: 14px 14px;
+  padding: 12px 14px;
   font-size: 13px;
   color: #374151;
-  border-right: 1px solid #e5e7eb;
   border-bottom: 1px solid #e5e7eb;
   vertical-align: middle;
-}
-
-.matched-reports-table tbody td:last-child {
-  border-right: none;
 }
 
 .matched-reports-table tbody tr:last-child td {
@@ -219,7 +212,7 @@ body.item-matched-page .nav-item.active .nav-item-label {
   padding: 6px 16px !important;
   border-radius: 6px !important;
   font-size: 12px !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   font-family: inherit !important;
   border: none !important;
   cursor: pointer !important;
@@ -228,26 +221,26 @@ body.item-matched-page .nav-item.active .nav-item-label {
   white-space: nowrap !important;
 }
 
-/* View – blue */
+/* View – maroon */
 .found-btn-view {
-  background-color: #1976d2 !important;
+  background-color: #8b0000 !important;
   color: #ffffff !important;
 }
 
 .found-btn-view:hover {
-  background-color: #1565c0 !important;
-  box-shadow: 0 1px 3px rgba(21,101,192,0.35) !important;
+  background-color: #6d0000 !important;
+  box-shadow: none !important;
 }
 
 /* Claim – green (active / within retention) */
 .found-btn-claim {
-  background-color: #22c55e !important;
+  background-color: #15803d !important;
   color: #ffffff !important;
 }
 
 .found-btn-claim:hover {
-  background-color: #16a34a !important;
-  box-shadow: 0 1px 3px rgba(34,197,94,0.35) !important;
+  background-color: #166534 !important;
+  box-shadow: none !important;
 }
 
 /* Claim – grey (overdue / expired) */

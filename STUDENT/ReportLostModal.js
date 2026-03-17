@@ -6,7 +6,6 @@
   var successCancel = document.getElementById('reportLostSuccessCancel');
   var studentEmail = document.body.dataset.studentEmail || '';
 
-  // Custom alert elements
   var customAlert = document.getElementById('customAlert');
   var customAlertMessage = document.getElementById('customAlertMessage');
   var customAlertOk = document.getElementById('customAlertOk');
@@ -16,42 +15,54 @@
   var closeBtn = modal && modal.querySelector('.report-lost-modal-close');
   var cancelBtn = modal && modal.querySelector('.report-lost-btn-cancel');
   var backdrop = modal && modal.querySelector('.report-lost-modal-backdrop');
-  var fileInput = modal && modal.querySelector('#reportImage');
-  var fileDisplay = modal && modal.querySelector('.report-lost-file-display');
-  var fileClear = modal && modal.querySelector('.report-lost-file-clear');
   var authorizeCheck = modal && modal.querySelector('#reportLostAuthorize');
   var submitBtn = modal && modal.querySelector('#reportLostSubmit');
   var confirmContent = modal && modal.querySelector('#reportLostConfirmContent');
-  var dateLostInput = modal && modal.querySelector('#reportDateLost');
 
+  /* Step 1 = form (with inline photo), Step 3 = confirmation review */
   var step1 = modal && modal.querySelector('#reportLostStep1');
-  var step2 = modal && modal.querySelector('#reportLostStep2');
   var step3 = modal && modal.querySelector('#reportLostStep3');
 
-  var formData = {}; // Store form data between steps
+  var formData = {};
   var imageDataUrl = null;
 
-  // Custom alert function
+  /* ── Photo picker ─────────────────────────────────────────────────── */
+  var _rlmPP = PhotoPicker.init({
+    el: modal && modal.querySelector('.pp-wrap'),
+    onChange: function (dataUrl) { imageDataUrl = dataUrl || null; }
+  });
+
+  /* ── Document & Identification sub-dropdown ───────────────────────── */
+  var catSelect  = modal && modal.querySelector('#reportCategory');
+  var docTypeRow = modal && modal.querySelector('#reportDocTypeRow');
+  var docTypeSel = modal && modal.querySelector('#reportDocType');
+  var itemInput  = modal && modal.querySelector('#reportItem');
+
+  function syncDocType() {
+    if (!catSelect || !docTypeRow) return;
+    var isDoc = catSelect.value === 'Document & Identification';
+    docTypeRow.style.display = isDoc ? '' : 'none';
+    if (!isDoc && docTypeSel) docTypeSel.value = '';
+  }
+  if (catSelect) catSelect.addEventListener('change', syncDocType);
+  if (docTypeSel) {
+    docTypeSel.addEventListener('change', function () {
+      if (itemInput) itemInput.value = this.value;
+    });
+  }
+
   function showAlert(message) {
-    if (!customAlert || !customAlertMessage) {
-      alert(message); // Fallback to browser alert
-      return;
-    }
+    if (!customAlert || !customAlertMessage) { alert(message); return; }
     customAlertMessage.textContent = message;
     customAlert.classList.add('open');
     customAlert.setAttribute('aria-hidden', 'false');
   }
-
   function hideAlert() {
     if (!customAlert) return;
     customAlert.classList.remove('open');
     customAlert.setAttribute('aria-hidden', 'true');
   }
-
-  // Custom alert OK button
-  if (customAlertOk) {
-    customAlertOk.addEventListener('click', hideAlert);
-  }
+  if (customAlertOk) customAlertOk.addEventListener('click', hideAlert);
 
   function openModal() {
     if (!modal) return;
@@ -60,13 +71,10 @@
     document.body.style.overflow = 'hidden';
     goToStep(1);
     formData = {};
-    imageDataUrl = null;
+    _rlmPP.clear();
     if (form) form.reset();
-    if (fileInput) fileInput.value = '';
-    if (fileDisplay) {
-      fileDisplay.querySelector('.report-lost-file-name').textContent = 'No file chosen';
-      fileDisplay.classList.remove('has-file');
-    }
+    if (docTypeRow) docTypeRow.style.display = 'none';
+    if (docTypeSel) docTypeSel.value = '';
     if (authorizeCheck) authorizeCheck.checked = false;
     if (submitBtn) submitBtn.disabled = true;
   }
@@ -79,25 +87,26 @@
   }
 
   function goToStep(n) {
-    if (!step1 || !step2 || !step3) return;
-    step1.classList.remove('report-lost-step-active');
-    step2.classList.remove('report-lost-step-active');
-    step3.classList.remove('report-lost-step-active');
-    if (n === 1) step1.classList.add('report-lost-step-active');
-    else if (n === 2) step2.classList.add('report-lost-step-active');
-    else if (n === 3) step3.classList.add('report-lost-step-active');
+    if (step1) step1.classList.remove('report-lost-step-active');
+    if (step3) step3.classList.remove('report-lost-step-active');
+    if (n === 1 && step1) step1.classList.add('report-lost-step-active');
+    if (n === 3 && step3) step3.classList.add('report-lost-step-active');
   }
 
   function collectFormData() {
     if (!form) return {};
     var fd = new FormData(form);
+    var docType = (docTypeSel && docTypeSel.value) ? docTypeSel.value : '';
+    var item = fd.get('item') || '';
+    if (docType && !item) item = docType;
     return {
       category: fd.get('category') || '',
+      document_type: docType,
       full_name: fd.get('full_name') || '',
       contact_number: fd.get('contact_number') || '',
       department: fd.get('department') || '',
       id: fd.get('id') || '',
-      item: fd.get('item') || '',
+      item: item,
       item_description: fd.get('item_description') || '',
       color: fd.get('color') || '',
       brand: fd.get('brand') || '',
@@ -111,116 +120,64 @@
     if (!d.contact_number || !d.contact_number.trim()) return 'Please enter your contact number.';
     if (!d.department || !d.department.trim()) return 'Please enter your department.';
     if (!d.item_description || !d.item_description.trim()) return 'Please enter the item description.';
-    
-    // Validate date if provided
     if (d.date_lost && d.date_lost.trim()) {
       var selectedDate = new Date(d.date_lost);
-      var today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time to start of day
-      
-      if (selectedDate > today) {
-        return 'Date lost cannot be in the future. Please select today or a past date.';
-      }
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      if (selectedDate > today) return 'Date lost cannot be in the future. Please select today or a past date.';
     }
-    
-    return null; // No validation errors
+    return null;
   }
 
   function renderConfirmation() {
     if (!confirmContent) return;
     var labels = {
-      category: 'Category',
-      full_name: 'Full Name',
-      contact_number: 'Contact Number',
-      department: 'Department',
-      id: 'ID',
-      item: 'Item',
-      item_description: 'Item Description',
-      color: 'Color',
-      brand: 'Brand',
-      date_lost: 'Date Lost'
+      category: 'Category', document_type: 'Document Type', full_name: 'Full Name', contact_number: 'Contact Number',
+      department: 'Department', id: 'ID', item: 'Item', item_description: 'Item Description',
+      color: 'Color', brand: 'Brand', date_lost: 'Date Lost'
     };
     var html = '';
     for (var key in labels) {
       var val = (formData[key] || '-').toString().trim() || '-';
-      html += '<div class="report-lost-confirm-row"><span class="report-lost-confirm-label">' + escapeHtml(labels[key]) + ':</span><span class="report-lost-confirm-value">' + escapeHtml(val) + '</span></div>';
+      html += '<div class="report-lost-confirm-row"><span class="report-lost-confirm-label">'
+        + escapeHtml(labels[key]) + ':</span><span class="report-lost-confirm-value">'
+        + escapeHtml(val) + '</span></div>';
+    }
+    if (imageDataUrl) {
+      html += '<div class="report-lost-confirm-row"><span class="report-lost-confirm-label">Photo:</span>'
+        + '<span class="report-lost-confirm-value"><img src="' + escapeHtml(imageDataUrl)
+        + '" alt="Item photo" style="max-width:120px;max-height:90px;object-fit:contain;border-radius:6px;border:1px solid #e5e7eb;"></span></div>';
     }
     confirmContent.innerHTML = html;
   }
 
   function escapeHtml(s) {
     if (!s) return '';
-    var d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
+    var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
   }
 
   openTriggers.forEach(function (el) {
-    el.addEventListener('click', function (e) {
-      e.preventDefault();
-      openModal();
-    });
+    el.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
   });
 
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
   if (backdrop) backdrop.addEventListener('click', closeModal);
 
-  if (fileInput && fileDisplay) {
-    fileInput.addEventListener('change', function () {
-      var name = this.files && this.files[0] ? this.files[0].name : '';
-      fileDisplay.querySelector('.report-lost-file-name').textContent = name || 'No file chosen';
-      fileDisplay.classList.toggle('has-file', !!name);
-    });
-  }
-  if (fileClear && fileInput) {
-    fileClear.addEventListener('click', function (e) {
-      e.preventDefault();
-      fileInput.value = '';
-      fileDisplay.querySelector('.report-lost-file-name').textContent = 'No file chosen';
-      fileDisplay.classList.remove('has-file');
-    });
-  }
-
   if (modal) {
     var next1 = modal.querySelector('#reportLostNext1');
-    var next2 = modal.querySelector('#reportLostNext2');
-    var back2 = modal.querySelector('#reportLostBack2');
     var back3 = modal.querySelector('#reportLostBack3');
 
     if (next1) {
       next1.addEventListener('click', function () {
-        var validationError = validateStep1();
-        if (validationError) {
-          showAlert(validationError);
-          return;
-        }
+        var err = validateStep1();
+        if (err) { showAlert(err); return; }
         formData = collectFormData();
-        goToStep(2);
+        renderConfirmation();
+        goToStep(3);
       });
     }
 
-    if (next2) {
-      next2.addEventListener('click', function () {
-        var file = fileInput && fileInput.files && fileInput.files[0];
-        if (file && file.size > 0) {
-          var reader = new FileReader();
-          reader.onload = function () {
-            imageDataUrl = reader.result;
-            renderConfirmation();
-            goToStep(3);
-          };
-          reader.readAsDataURL(file);
-        } else {
-          imageDataUrl = null;
-          renderConfirmation();
-          goToStep(3);
-        }
-      });
-    }
-
-    if (back2) back2.addEventListener('click', function () { goToStep(1); });
-    if (back3) back3.addEventListener('click', function () { goToStep(2); });
+    if (back3) back3.addEventListener('click', function () { goToStep(1); });
 
     if (authorizeCheck && submitBtn) {
       authorizeCheck.addEventListener('change', function () {
@@ -235,7 +192,8 @@
 
         var data = Object.assign({}, formData);
         data.imageDataUrl = imageDataUrl || '';
-        data.student_email = (data.student_email && data.student_email.trim()) ? data.student_email.trim() : (studentEmail || '');
+        data.student_email = (data.student_email && data.student_email.trim())
+          ? data.student_email.trim() : (studentEmail || '');
 
         fetch('../save_lost_report.php', {
           method: 'POST',
@@ -244,13 +202,8 @@
         })
         .then(function (r) { return r.json(); })
         .then(function (res) {
-          if (res.ok) {
-            closeModal();
-            showSuccess(res.id || '');
-          } else {
-            showAlert(res.error || 'Failed to submit report.');
-            submitBtn.disabled = false;
-          }
+          if (res.ok) { closeModal(); showSuccess(res.id || ''); }
+          else { showAlert(res.error || 'Failed to submit report.'); submitBtn.disabled = false; }
         })
         .catch(function () {
           showAlert('Failed to submit report. Please try again.');

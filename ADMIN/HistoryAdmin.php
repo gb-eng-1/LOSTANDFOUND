@@ -38,6 +38,7 @@ try {
 } catch (PDOException $e) { $guestClaimed = []; }
 
 $itemCategories = require dirname(__DIR__) . '/config/categories.php';
+$adminName = $_SESSION['admin_name'] ?? 'Admin';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -89,10 +90,10 @@ $itemCategories = require dirname(__DIR__) . '/config/categories.php';
   user-select: none;
 }
 .found-tab-text.found-tab-active {
-  background: #fff;
-  color: #111827;
+  background: #8b0000;
+  color: #fff;
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 4px rgba(139,0,0,0.25);
 }
 .found-filter-select {
   padding: 6px 10px;
@@ -138,9 +139,9 @@ $itemCategories = require dirname(__DIR__) . '/config/categories.php';
             <div class="topbar-right">
                 <?php include __DIR__ . '/includes/notifications_dropdown.php'; ?>
                 <div class="admin-dropdown" id="adminDropdown">
-                    <button type="button" class="admin-link admin-dropdown-trigger topbar-admin-trigger" aria-expanded="false" aria-haspopup="true" aria-label="Admin menu">
-                        <i class="fa-regular fa-user"></i>
-                        <span class="admin-name">Admin</span>
+                        <button type="button" class="admin-link admin-dropdown-trigger topbar-admin-trigger" aria-expanded="false" aria-haspopup="true" aria-label="Admin menu">
+                            <i class="fa-regular fa-user"></i>
+                            <span class="admin-name"><?php echo htmlspecialchars($adminName); ?></span>
                         <i class="fa-solid fa-chevron-down" style="font-size: 11px;"></i>
                     </button>
                     <div class="admin-dropdown-menu" role="menu">
@@ -158,8 +159,8 @@ $itemCategories = require dirname(__DIR__) . '/config/categories.php';
                     <!-- Tab bar -->
                     <div class="found-tabs-actions-row">
                         <div class="found-tabs">
-                            <span class="found-tab-text found-tab-active" id="histAllTab">All Items</span>
-                            <span class="found-tab-text" id="histGuestTab">Guest Items</span>
+                            <span class="found-tab-text found-tab-active" id="histAllTab"><i class="fa-solid fa-list" style="margin-right:5px;font-size:12px;"></i>All Items</span>
+                            <span class="found-tab-text" id="histGuestTab"><i class="fa-solid fa-user-group" style="margin-right:5px;font-size:12px;"></i>Guest Items</span>
                         </div>
                         <select id="historyCategoryFilter" class="found-filter-select" aria-label="Filter by category">
                             <option value="">All Categories</option>

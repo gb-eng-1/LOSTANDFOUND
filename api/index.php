@@ -24,6 +24,7 @@ require_once __DIR__ . '/routes/support.php';
 require_once __DIR__ . '/routes/auth.php';
 require_once __DIR__ . '/routes/admin.php';
 require_once __DIR__ . '/routes/student.php';
+require_once __DIR__ . '/routes/notifications.php';
 
 // Connect to Database
 $database = new Database();
@@ -48,6 +49,7 @@ switch ($resource) {
     case 'support': handleSupportRoute($method, $parts, $pdo); break;
     case 'auth':    handleAuthRoute($method, $parts, $pdo); break;
     case 'admin':   handleAdminRoute($method, $parts, $pdo); break;
-    case 'student': handleStudentRoute($method, $parts, $pdo); break;
-    default:        Response::error('API Endpoint not found: ' . $resource, 'NOT_FOUND', 404);
+    case 'student':       handleStudentRoute($method, $parts, $pdo); break;
+    case 'notifications': handleNotificationRoute($method, $parts, $pdo); break;
+    default:              Response::error('API Endpoint not found: ' . $resource, 'NOT_FOUND', 404);
 }

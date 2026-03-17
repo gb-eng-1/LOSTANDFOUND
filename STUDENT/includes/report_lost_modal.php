@@ -12,7 +12,7 @@ if (!empty($_SESSION['student_id'])) {
         if ($row && !empty($row['student_id'])) $studentNumber = trim($row['student_id']);
     } catch (Exception $e) {}
 }
-$colors = ['Black', 'White', 'Blue', 'Red', 'Green', 'Gray', 'Brown', 'Silver', 'Gold', 'Other'];
+$colors = ['Red', 'Orange', 'Yellow', 'Green', 'Blue', 'Violet', 'Black', 'White', 'Brown', 'Rainbow', 'Multi', 'Other'];
 ?>
 <div id="reportLostModal" class="report-lost-modal" role="dialog" aria-labelledby="reportLostModalTitle" aria-modal="true" aria-hidden="true">
   <div class="report-lost-modal-backdrop"></div>
@@ -34,6 +34,20 @@ $colors = ['Black', 'White', 'Blue', 'Red', 'Green', 'Gray', 'Brown', 'Silver', 
               <?php foreach ($categories as $cat): ?>
                 <option value="<?php echo htmlspecialchars($cat); ?>"><?php echo htmlspecialchars($cat); ?></option>
               <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="report-lost-field" id="reportDocTypeRow" style="display:none">
+            <label for="reportDocType">Document Type:</label>
+            <select id="reportDocType" name="document_type">
+              <option value="">Select document type</option>
+              <option>Student ID</option>
+              <option>Driver's License</option>
+              <option>Passport</option>
+              <option>Person's With Disability (PWD) ID</option>
+              <option>Voter's ID</option>
+              <option>Company/Employee ID</option>
+              <option>National ID</option>
+              <option>Senior Citizen ID</option>
             </select>
           </div>
           <div class="report-lost-field">
@@ -77,6 +91,30 @@ $colors = ['Black', 'White', 'Blue', 'Red', 'Green', 'Gray', 'Brown', 'Silver', 
             <label for="reportDateLost">Date Lost:</label>
             <input type="date" id="reportDateLost" name="date_lost" placeholder="Pick a Date" max="<?php echo date('Y-m-d'); ?>">
           </div>
+
+          <!-- Inline image upload -->
+          <div class="pp-photo-row">
+            <label class="pp-photo-label">Photo <span class="pp-optional">(optional)</span></label>
+            <div class="pp-wrap" id="rlmPhotoPicker">
+              <div class="pp-idle">
+                <i class="fa-regular fa-image pp-icon"></i>
+                <p class="pp-hint">No photo yet</p>
+                <div class="pp-btn-row">
+                  <button type="button" class="pp-btn pp-btn--cam" data-pp="camera"><i class="fa-solid fa-camera"></i> Camera</button>
+                  <button type="button" class="pp-btn pp-btn--upload" data-pp="upload"><i class="fa-solid fa-upload"></i> Upload</button>
+                </div>
+              </div>
+              <div class="pp-preview" style="display:none">
+                <img class="pp-preview-img" src="" alt="Photo preview">
+                <div class="pp-preview-actions">
+                  <button type="button" class="pp-btn pp-btn--sm" data-pp="camera"><i class="fa-solid fa-camera"></i> Retake</button>
+                  <button type="button" class="pp-btn pp-btn--sm" data-pp="upload"><i class="fa-solid fa-upload"></i> Change</button>
+                  <button type="button" class="pp-btn pp-btn--del" data-pp="remove"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+              </div>
+              <input type="file" class="pp-file" accept="image/*" style="display:none">
+            </div>
+          </div>
         </div>
         <div class="report-lost-modal-footer">
           <button type="button" class="report-lost-btn report-lost-btn-cancel">Cancel</button>
@@ -85,28 +123,7 @@ $colors = ['Black', 'White', 'Blue', 'Red', 'Green', 'Gray', 'Brown', 'Silver', 
       </form>
     </div>
 
-    <!-- Step 2: Upload Image -->
-    <div id="reportLostStep2" class="report-lost-step">
-      <div class="report-lost-modal-body">
-        <div class="report-lost-field">
-          <label for="reportImage">Upload Image:</label>
-          <div class="report-lost-file-wrap">
-            <input type="file" id="reportImage" name="image" accept="image/*" class="report-lost-file-input">
-            <div class="report-lost-file-display">
-              <span class="report-lost-file-name">No file chosen</span>
-              <button type="button" class="report-lost-file-clear" aria-label="Clear file"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-          </div>
-          <p class="report-lost-hint">Optional. You may skip this step.</p>
-        </div>
-      </div>
-      <div class="report-lost-modal-footer">
-        <button type="button" class="report-lost-btn report-lost-btn-back" id="reportLostBack2">Back</button>
-        <button type="button" class="report-lost-btn report-lost-btn-next" id="reportLostNext2">Next</button>
-      </div>
-    </div>
-
-    <!-- Step 3: Confirmation -->
+    <!-- Step 2: Confirmation (formerly Step 3) -->
     <div id="reportLostStep3" class="report-lost-step">
       <div class="report-lost-modal-body report-lost-confirm-body">
         <div class="report-lost-confirm-grid" id="reportLostConfirmContent">

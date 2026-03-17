@@ -410,6 +410,8 @@ function fmtDateTime($d) { return $d ? date('M d, Y \a\t g:i A', strtotime($d)) 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
   <style>.fa-solid,.fa-regular,.fa-brands{display:inline-block!important;font-style:normal!important;font-variant:normal!important;text-rendering:auto!important;-webkit-font-smoothing:antialiased;}</style>
   <link rel="stylesheet" href="AdminDashboard.css?v=<?= time() ?>">
+  <link rel="stylesheet" href="../assets/photo-picker.css?v=<?= time() ?>">
+  <link rel="stylesheet" href="NotificationsDropdown.css?v=<?= time() ?>">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/js/all.min.js"></script>
 </head>
@@ -448,12 +450,12 @@ function fmtDateTime($d) { return $d ? date('M d, Y \a\t g:i A', strtotime($d)) 
         </form>
       </div>
       <div class="topbar-right">
-        <button class="topbar-icon-btn" title="Notifications"><i class="fa-solid fa-bell"></i></button>
+        <?php include __DIR__ . '/includes/notifications_dropdown.php'; ?>
         <div class="admin-dropdown" id="adminDropdown">
-          <button type="button" class="admin-dropdown-trigger" aria-expanded="false" aria-haspopup="true">
-            <i class="fa-regular fa-circle-user topbar-avatar-icon"></i>
-            <span class="admin-name"><?= htmlspecialchars($adminName) ?></span>
-            <i class="fa-solid fa-chevron-down topbar-chevron"></i>
+          <button type="button" class="admin-link admin-dropdown-trigger topbar-admin-trigger" aria-expanded="false" aria-haspopup="true" aria-label="Admin menu">
+            <i class="fa-regular fa-user"></i>
+            <span class="admin-name"><?php echo htmlspecialchars($adminName); ?></span>
+            <i class="fa-solid fa-chevron-down" style="font-size:11px;"></i>
           </button>
           <div class="admin-dropdown-menu" role="menu">
             <a href="logout.php" role="menuitem" class="admin-dropdown-item"><i class="fa-solid fa-right-from-bracket"></i> Log Out</a>
@@ -1032,6 +1034,21 @@ document.addEventListener('click', function(e) {
         </select>
       </div>
 
+      <div class="ei-field" id="eiDocTypeField" style="display:none">
+        <label class="ei-label">Document Type</label>
+        <select id="ei_doc_type" class="ei-input">
+          <option value="">Select document type</option>
+          <option>Student ID</option>
+          <option>Driver's License</option>
+          <option>Passport</option>
+          <option>Person's With Disability (PWD) ID</option>
+          <option>Voter's ID</option>
+          <option>Company/Employee ID</option>
+          <option>National ID</option>
+          <option>Senior Citizen ID</option>
+        </select>
+      </div>
+
       <div class="ei-field">
         <label class="ei-label">Item <span class="ei-req">*</span></label>
         <input id="ei_item" type="text" class="ei-input" placeholder="e.g. Umbrella, Water Bottle">
@@ -1039,7 +1056,21 @@ document.addEventListener('click', function(e) {
 
       <div class="ei-field">
         <label class="ei-label">Color <span class="ei-req">*</span></label>
-        <input id="ei_color" type="text" class="ei-input" placeholder="e.g. Black, Red">
+        <select id="ei_color" class="ei-input">
+          <option value="">Select</option>
+          <option>Red</option>
+          <option>Orange</option>
+          <option>Yellow</option>
+          <option>Green</option>
+          <option>Blue</option>
+          <option>Violet</option>
+          <option>Black</option>
+          <option>White</option>
+          <option>Brown</option>
+          <option>Rainbow</option>
+          <option>Multi</option>
+          <option>Other</option>
+        </select>
       </div>
 
       <div class="ei-field">
@@ -1088,146 +1119,36 @@ document.addEventListener('click', function(e) {
         <input id="ei_date" type="date" class="ei-input">
       </div>
 
+      <!-- ── Inline Item Photo ──────────────────────────────────────────── -->
+      <div class="pp-photo-row">
+        <label class="pp-photo-label">Item Photo</label>
+        <div class="pp-wrap" id="eiPhotoPicker">
+          <div class="pp-idle">
+            <i class="fa-regular fa-image pp-icon"></i>
+            <p class="pp-hint">No photo yet</p>
+            <div class="pp-btn-row">
+              <button type="button" class="pp-btn pp-btn--cam" data-pp="camera"><i class="fa-solid fa-camera"></i> Camera</button>
+              <button type="button" class="pp-btn pp-btn--upload" data-pp="upload"><i class="fa-solid fa-upload"></i> Upload</button>
+            </div>
+          </div>
+          <div class="pp-preview" style="display:none">
+            <img class="pp-preview-img" src="" alt="Photo preview">
+            <div class="pp-preview-actions">
+              <button type="button" class="pp-btn pp-btn--sm" data-pp="camera"><i class="fa-solid fa-camera"></i> Retake</button>
+              <button type="button" class="pp-btn pp-btn--sm" data-pp="upload"><i class="fa-solid fa-upload"></i> Change</button>
+              <button type="button" class="pp-btn pp-btn--del" data-pp="remove"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+          </div>
+          <input type="file" class="pp-file" accept="image/*" style="display:none">
+        </div>
+      </div>
+
     </div><!-- /ei-body -->
 
     <div class="ei-footer">
       <button type="button" onclick="closeEncodeModal()" class="ei-btn-cancel">Cancel</button>
-      <button type="button" id="ei_next_btn" onclick="goToScanner()" class="ei-btn-primary">Next</button>
       <button type="button" id="ei_confirm_btn" onclick="confirmEncode()" class="ei-btn-primary"
-              style="display:none;background:#8b0000;">Confirm</button>
-    </div>
-  </div>
-
-  <!-- ── STEP 2: Item Photo (camera or upload) ──────────────────────────── -->
-  <div id="ei-step-scanner" class="ei-card" style="display:none;max-width:480px;">
-
-    <div class="ei-header">
-      <h2 class="ei-header-title">Item Photo</h2>
-      <button type="button" class="ei-close-btn" onclick="closeEncodeModal()">
-        <i class="fa-regular fa-circle-xmark"></i>
-      </button>
-    </div>
-
-    <div class="ei-body" style="align-items:center;text-align:center;padding:28px 24px;">
-
-      <!-- Camera / preview area -->
-      <div class="ei-scan-frame">
-        <span></span>
-        <video id="ei_video" autoplay playsinline
-               style="width:100%;height:100%;object-fit:cover;border-radius:4px;display:none;"></video>
-        <img id="ei_photo_preview" src="" alt=""
-             style="width:100%;height:100%;object-fit:cover;border-radius:4px;display:none;">
-        <div id="ei_scan_idle"
-             style="width:100%;height:100%;background:#f3f4f6;border-radius:4px;
-                    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">
-          <i class="fa-solid fa-camera" style="font-size:40px;color:#d1d5db;"></i>
-          <span style="font-size:12px;color:#9ca3af;">No photo yet</span>
-        </div>
-      </div>
-      <canvas id="ei_capture_canvas" style="display:none;"></canvas>
-
-      <p id="ei_scan_hint" style="margin:16px 0 24px;font-size:13px;color:#374151;line-height:1.5;">
-        Use your camera or upload a photo of the item.
-      </p>
-
-      <!-- Idle: two entry-point buttons -->
-      <div id="ei_cam_idle_btns" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
-        <button type="button" onclick="startCamera()" class="ei-btn-scanner">
-          <i class="fa-solid fa-camera"></i> Use Camera
-        </button>
-        <button type="button" onclick="goToUpload()" class="ei-btn-scanner">
-          <i class="fa-solid fa-upload"></i> Upload Photo
-        </button>
-      </div>
-
-      <!-- Live camera: Take Photo only -->
-      <div id="ei_cam_live_btns" style="display:none;gap:14px;justify-content:center;flex-wrap:wrap;">
-        <button type="button" onclick="capturePhoto()" class="ei-btn-scanner"
-                style="background:#16a34a;">
-          <i class="fa-solid fa-circle-dot"></i> Take Photo
-        </button>
-      </div>
-
-      <!-- After capture: Retake or Use -->
-      <div id="ei_cam_captured_btns" style="display:none;gap:14px;justify-content:center;flex-wrap:wrap;">
-        <button type="button" onclick="retakePhoto()" class="ei-btn-scanner"
-                style="background:#6b7280;">
-          <i class="fa-solid fa-rotate-left"></i> Retake
-        </button>
-        <button type="button" onclick="usePhoto()" class="ei-btn-scanner"
-                style="background:#16a34a;">
-          <i class="fa-solid fa-check"></i> Use This Photo
-        </button>
-      </div>
-    </div>
-
-    <div class="ei-footer" style="justify-content:flex-start;">
-      <button type="button" onclick="backToFormFromPhoto()" class="ei-btn-cancel">
-        <i class="fa-solid fa-arrow-left" style="margin-right:5px;"></i>Back
-      </button>
-      <button type="button" id="ei_stop_cam_btn" onclick="stopCamera()"
-              class="ei-btn-cancel" style="display:none;border-color:#dc2626;color:#dc2626;">
-        <i class="fa-solid fa-stop" style="margin-right:5px;"></i>Stop Camera
-      </button>
-    </div>
-  </div>
-
-    <!-- ── STEP 2b: Upload Barcode Image ─────────────────────────────────────── -->
-  <div id="ei-step-upload" class="ei-card" style="display:none;max-width:480px;">
-
-    <div class="ei-header">
-      <h2 class="ei-header-title">Upload Item Photo</h2>
-      <button type="button" class="ei-close-btn" onclick="closeEncodeModal()">
-        <i class="fa-regular fa-circle-xmark"></i>
-      </button>
-    </div>
-
-    <div class="ei-body" style="padding:24px;">
-
-      <!-- Drop zone -->
-      <div id="ei_bc_dropzone"
-           style="border:1.5px solid #e5e7eb;border-radius:12px;padding:48px 24px;
-                  text-align:center;cursor:pointer;background:#fff;transition:border-color .15s;"
-           onclick="document.getElementById('ei_bc_file').click()"
-           ondragover="event.preventDefault();this.style.borderColor='#8b0000';"
-           ondragleave="this.style.borderColor='#e5e7eb';"
-           ondrop="handleBcDrop(event)">
-        <div style="width:56px;height:56px;border:2px solid #111827;border-radius:8px;
-                    display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
-          <i class="fa-regular fa-image" style="font-size:24px;color:#111827;"></i>
-        </div>
-        <p style="margin:0;font-size:14px;color:#374151;">Upload a photo of the item here.</p>
-      </div>
-      <input id="ei_bc_file" type="file" accept="image/*" style="display:none;"
-             onchange="handleBcFile(this)">
-
-      <!-- File row (hidden until file chosen) -->
-      <div id="ei_bc_file_row" style="display:none;margin-top:12px;background:#f3f4f6;
-           border-radius:10px;padding:12px 14px;display:none;align-items:center;gap:12px;">
-        <div style="width:44px;height:44px;background:#d1d5db;border-radius:6px;
-                    flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-          <img id="ei_bc_thumb" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
-          <i class="fa-regular fa-image" id="ei_bc_thumb_icon" style="color:#9ca3af;font-size:18px;"></i>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <p id="ei_bc_fname" style="margin:0;font-size:13px;font-weight:600;color:#374151;
-             white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></p>
-          <p id="ei_bc_fsize" style="margin:0;font-size:12px;color:#6b7280;"></p>
-        </div>
-        <button type="button" onclick="clearBcFile()"
-                style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:18px;flex-shrink:0;">
-          <i class="fa-regular fa-circle-xmark"></i>
-        </button>
-      </div>
-
-      <div id="ei_bc_error" style="display:none;margin-top:10px;background:#fef2f2;
-           border:1px solid #fca5a5;color:#991b1b;border-radius:8px;padding:8px 12px;font-size:13px;"></div>
-
-    </div>
-
-    <div class="ei-footer">
-      <button type="button" onclick="goToScanner()" class="ei-btn-cancel">Cancel</button>
-      <button type="button" id="ei_bc_next_btn" onclick="processUploadedImage()" class="ei-btn-primary">Use This Photo</button>
+              style="background:#8b0000;">Confirm</button>
     </div>
   </div>
 
@@ -1384,30 +1305,26 @@ textarea.ei-input { resize:vertical; }
 .summary-bg-icon.verification   i { color: #50C878 !important; }
 </style>
 
+<script src="../assets/photo-picker.js?v=<?= time() ?>"></script>
 <script>
 /* ════════════════════════════════════════════════════════════════════════════
-   ENCODE ITEM — multi-step modal controller
+   ENCODE ITEM — modal controller (single-step form with inline photo)
    ════════════════════════════════════════════════════════════════════════════ */
 (function(){
 var overlay        = document.getElementById('encodeItemOverlay');
 var stepForm       = document.getElementById('ei-step-form');
-var stepScanner    = document.getElementById('ei-step-scanner');
-var stepUpload     = document.getElementById('ei-step-upload');
 var successOverlay = document.getElementById('encodeSuccessOverlay');
 
 var todayStr = new Date().toISOString().split('T')[0];
 document.getElementById('ei_date').setAttribute('max', todayStr);
 
-/* Camera stream handle */
-var _stream = null;
-window._eiImageData = '';   /* final item photo (from camera OR upload) */
-var _confirmed = false;
+window._eiImageData = '';
+var _eiPP = PhotoPicker.init({
+    el: 'eiPhotoPicker',
+    onChange: function(dataUrl) { window._eiImageData = dataUrl || ''; }
+});
 
-/* ── Helpers ───────────────────────────────────────────────────────────── */
-function showStep(step) {
-    [stepForm, stepScanner, stepUpload].forEach(function(el){ el.style.display = 'none'; });
-    step.style.display = 'flex';
-}
+/* ── Error banner ──────────────────────────────────────────────────────── */
 function showEncodeError(msg) {
     var el = document.getElementById('encodeError');
     el.textContent = msg; el.style.display = 'block';
@@ -1418,37 +1335,49 @@ function hideEncodeError() {
     el.style.display = 'none'; el.textContent = '';
 }
 function clearFormFields() {
-    ['ei_barcode','ei_category','ei_item','ei_color','ei_brand',
+    ['ei_barcode','ei_category','ei_doc_type','ei_item','ei_color','ei_brand',
      'ei_storage','ei_found_at','ei_found_by','ei_date','ei_desc']
         .forEach(function(id){
             var el = document.getElementById(id);
             if (el) { el.value = ''; el.disabled = false; }
         });
+    var eiDocTypeField = document.getElementById('eiDocTypeField');
+    if (eiDocTypeField) eiDocTypeField.style.display = 'none';
     document.querySelectorAll('.ei-input').forEach(function(el){
         el.classList.remove('ei-error');
     });
     hideEncodeError();
 }
-function setConfirmMode(on) {
-    _confirmed = on;
-    document.getElementById('ei_next_btn').style.display    = on ? 'none' : '';
-    document.getElementById('ei_confirm_btn').style.display = on ? '' : 'none';
-}
 
-/* ── Open / Close ──────────────────────────────────────────────────────── */
+// Document & Identification sub-dropdown for Encode Item
+(function () {
+    var catSel  = document.getElementById('ei_category');
+    var docField = document.getElementById('eiDocTypeField');
+    var docSel  = document.getElementById('ei_doc_type');
+    var itemEl  = document.getElementById('ei_item');
+    function syncEiDocType() {
+        if (!docField) return;
+        var isDoc = catSel && catSel.value === 'Document & Identification';
+        docField.style.display = isDoc ? 'flex' : 'none';
+        if (!isDoc && docSel) docSel.value = '';
+    }
+    if (catSel) catSel.addEventListener('change', syncEiDocType);
+    if (docSel) docSel.addEventListener('change', function () {
+        if (itemEl) itemEl.value = this.value;
+    });
+})();
+
+/* ── Open / Close encode modal ─────────────────────────────────────────── */
 window.openEncodeModal = function(e) {
     if (e) e.preventDefault();
     clearFormFields();
-    setConfirmMode(false);
-    window._eiImageData = '';
-    resetPhotoStep();
-    showStep(stepForm);
-    overlay.style.display = 'flex';
+    _eiPP.clear();
+    stepForm.style.display = 'flex';
+    overlay.style.display  = 'flex';
     document.body.style.overflow = 'hidden';
 };
 window.closeEncodeModal = function() {
-    stopCamera();
-    overlay.style.display = 'none';
+    overlay.style.display    = 'none';
     document.body.style.overflow = '';
 };
 
@@ -1460,7 +1389,7 @@ successOverlay.addEventListener('click', function(e){
 });
 document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') {
-        if (overlay.style.display === 'flex')        closeEncodeModal();
+        if (overlay.style.display    === 'flex') { closeEncodeModal(); return; }
         if (successOverlay.style.display === 'flex') cancelEncodeSuccess();
     }
 });
@@ -1477,201 +1406,6 @@ if (barcodeInput) {
             .catch(function(){});
     });
 }
-
-/* ── Step 1 → Step 2 ──────────────────────────────────────────────────── */
-window.goToScanner = function() {
-    stopCamera();
-    resetPhotoStep();
-    showStep(stepScanner);
-};
-window.backToForm = function() {
-    stopCamera();
-    showStep(stepForm);
-};
-window.backToFormFromPhoto = function() {
-    stopCamera();
-    if (window._eiImageData) setConfirmMode(true);
-    showStep(stepForm);
-};
-
-/* ── Reset photo step to idle ─────────────────────────────────────────── */
-function resetPhotoStep() {
-    var idle     = document.getElementById('ei_scan_idle');
-    var video    = document.getElementById('ei_video');
-    var preview  = document.getElementById('ei_photo_preview');
-    var idleBtns = document.getElementById('ei_cam_idle_btns');
-    var liveBtns = document.getElementById('ei_cam_live_btns');
-    var capBtns  = document.getElementById('ei_cam_captured_btns');
-    var stopBtn  = document.getElementById('ei_stop_cam_btn');
-    var hint     = document.getElementById('ei_scan_hint');
-
-    if (idle)     idle.style.display     = 'flex';
-    if (video)    { video.style.display  = 'none'; video.srcObject = null; }
-    if (preview)  { preview.style.display = 'none'; preview.src = ''; }
-    if (idleBtns) idleBtns.style.display  = 'flex';
-    if (liveBtns) liveBtns.style.display  = 'none';
-    if (capBtns)  capBtns.style.display   = 'none';
-    if (stopBtn)  stopBtn.style.display   = 'none';
-    if (hint)     hint.textContent = 'Use your camera or upload a photo of the item.';
-}
-
-/* ── Camera (getUserMedia) ────────────────────────────────────────────── */
-window.startCamera = function() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('Camera access is not supported in this browser.');
-        return;
-    }
-    stopCamera();
-    navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
-    })
-    .then(function(stream) {
-        _stream = stream;
-        var video    = document.getElementById('ei_video');
-        var idle     = document.getElementById('ei_scan_idle');
-        var preview  = document.getElementById('ei_photo_preview');
-        var idleBtns = document.getElementById('ei_cam_idle_btns');
-        var liveBtns = document.getElementById('ei_cam_live_btns');
-        var stopBtn  = document.getElementById('ei_stop_cam_btn');
-        var hint     = document.getElementById('ei_scan_hint');
-
-        video.srcObject = stream;
-        video.play();
-        video.style.display    = 'block';
-        idle.style.display     = 'none';
-        preview.style.display  = 'none';
-        idleBtns.style.display = 'none';
-        liveBtns.style.display = 'flex';
-        stopBtn.style.display  = 'inline-flex';
-        if (hint) hint.textContent = 'Position the item, then tap Take Photo.';
-    })
-    .catch(function(err) {
-        console.error('Camera error:', err);
-        alert('Could not access the camera. Check browser permissions, or use Upload Photo instead.');
-    });
-};
-
-window.stopCamera = function() {
-    if (_stream) {
-        _stream.getTracks().forEach(function(t){ t.stop(); });
-        _stream = null;
-    }
-    var video  = document.getElementById('ei_video');
-    var stopBtn = document.getElementById('ei_stop_cam_btn');
-    if (video)   { video.style.display = 'none'; video.srcObject = null; }
-    if (stopBtn) stopBtn.style.display = 'none';
-};
-
-/* ── Capture photo from live video ───────────────────────────────────── */
-window.capturePhoto = function() {
-    var video    = document.getElementById('ei_video');
-    var canvas   = document.getElementById('ei_capture_canvas');
-    var preview  = document.getElementById('ei_photo_preview');
-    var idle     = document.getElementById('ei_scan_idle');
-    var liveBtns = document.getElementById('ei_cam_live_btns');
-    var capBtns  = document.getElementById('ei_cam_captured_btns');
-    var hint     = document.getElementById('ei_scan_hint');
-
-    if (!video || !canvas) return;
-    canvas.width  = video.videoWidth  || 640;
-    canvas.height = video.videoHeight || 480;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    var dataUrl = canvas.toDataURL('image/jpeg', 0.88);
-    window._eiImageData = dataUrl;
-
-    preview.src           = dataUrl;
-    preview.style.display = 'block';
-    video.style.display   = 'none';
-    idle.style.display    = 'none';
-    liveBtns.style.display = 'none';
-    capBtns.style.display  = 'flex';
-    stopCamera();
-    if (hint) hint.textContent = 'Photo captured! Use it or retake.';
-};
-
-window.retakePhoto = function() {
-    window._eiImageData = '';
-    var preview = document.getElementById('ei_photo_preview');
-    if (preview) { preview.style.display = 'none'; preview.src = ''; }
-    var capBtns = document.getElementById('ei_cam_captured_btns');
-    if (capBtns) capBtns.style.display = 'none';
-    startCamera();
-};
-
-window.usePhoto = function() {
-    stopCamera();
-    setConfirmMode(true);
-    showStep(stepForm);
-};
-
-/* ── Step 2 → Step 2b (upload) ───────────────────────────────────────── */
-window.goToUpload = function() {
-    stopCamera();
-    clearBcFile();
-    showStep(stepUpload);
-};
-
-/* ── Upload image handling ────────────────────────────────────────────── */
-window.handleBcFile = function(input) {
-    var file = input.files[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-        document.getElementById('ei_bc_error').textContent = 'Image must be under 10 MB.';
-        document.getElementById('ei_bc_error').style.display = 'block';
-        input.value = ''; return;
-    }
-    document.getElementById('ei_bc_error').style.display = 'none';
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-        window._eiImageData = ev.target.result;
-        showBcFileRow(ev.target.result, file.name, (file.size / 1048576).toFixed(1) + ' MB');
-    };
-    reader.readAsDataURL(file);
-};
-window.handleBcDrop = function(e) {
-    e.preventDefault();
-    document.getElementById('ei_bc_dropzone').style.borderColor = '#e5e7eb';
-    var file = e.dataTransfer.files[0];
-    if (!file || !file.type.startsWith('image/')) {
-        document.getElementById('ei_bc_error').textContent = 'Please drop an image file.';
-        document.getElementById('ei_bc_error').style.display = 'block'; return;
-    }
-    var dt = new DataTransfer(); dt.items.add(file);
-    var inp = document.getElementById('ei_bc_file');
-    inp.files = dt.files;
-    handleBcFile(inp);
-};
-function showBcFileRow(dataUrl, name, size) {
-    var row   = document.getElementById('ei_bc_file_row');
-    var thumb = document.getElementById('ei_bc_thumb');
-    var icon  = document.getElementById('ei_bc_thumb_icon');
-    document.getElementById('ei_bc_fname').textContent = name;
-    document.getElementById('ei_bc_fsize').textContent = size;
-    thumb.src = dataUrl; thumb.style.display = 'block';
-    icon.style.display = 'none';
-    row.style.display = 'flex';
-}
-window.clearBcFile = function() {
-    window._eiImageData = '';
-    document.getElementById('ei_bc_file').value = '';
-    document.getElementById('ei_bc_file_row').style.display = 'none';
-    document.getElementById('ei_bc_thumb').src = '';
-    document.getElementById('ei_bc_thumb').style.display = 'none';
-    document.getElementById('ei_bc_thumb_icon').style.display = 'block';
-    document.getElementById('ei_bc_error').style.display = 'none';
-};
-
-/* ── Use uploaded photo: go to confirm mode ───────────────────────────── */
-window.processUploadedImage = function() {
-    if (!window._eiImageData) {
-        document.getElementById('ei_bc_error').textContent = 'Please choose a photo first.';
-        document.getElementById('ei_bc_error').style.display = 'block'; return;
-    }
-    document.getElementById('ei_bc_error').style.display = 'none';
-    setConfirmMode(true);
-    showStep(stepForm);
-};
 
 /* ── Confirm: validate + submit ───────────────────────────────────────── */
 window.confirmEncode = function() {
@@ -1851,7 +1585,7 @@ function autoFillForm(item) {
     setVal('ei_date',     item.date_encoded ? item.date_encoded.split(' ')[0] : '');
     setVal('ei_desc',     cleanDesc(item.item_description));
     if (item.image_data && !window._eiImageData) {
-        window._eiImageData = item.image_data;
+        _eiPP.setPhoto(item.image_data);
     }
 }
 
@@ -1859,5 +1593,6 @@ function autoFillForm(item) {
 
 </script>
 
+<script src="NotificationsDropdown.js"></script>
 </body>
 </html>

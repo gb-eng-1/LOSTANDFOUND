@@ -5,6 +5,7 @@ require_once dirname(__DIR__) . '/config/database.php';
 
 $itemCategories = require dirname(__DIR__) . '/config/categories.php';
 $today = date('Y-m-d');
+$adminName = $_SESSION['admin_name'] ?? 'Admin';
 
 // 1. Found items (UB-xxx): For Verification + Unclaimed Items
 $forVerification = get_items($pdo, 'For Verification');
@@ -67,8 +68,39 @@ $matchedItems = array_merge($matchedItems, $reports);
 
 $overdueCount = count(array_filter($matchedItems, fn($i) => !empty($i['_is_overdue'])));
 
-// Guest Items = same data as Found (Unclaimed IDs External)
-$guestItems = get_items($pdo, 'Unclaimed IDs External');
+// Guest Items = items categorised as 'ID & Nameplate'
+$guestItems = [];
+try {
+    $gStmt = $pdo->prepare(
+        "SELECT *, date_encoded AS dateEncoded, image_data AS imageDataUrl,
+                item_description AS itemDescription
+         FROM items
+         WHERE item_type = 'ID & Nameplate'
+           AND id NOT LIKE 'REF-%'
+         ORDER BY created_at DESC"
+    );
+    $gStmt->execute();
+    $guestItems = $gStmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    error_log('ItemMatchedAdmin guestItems: ' . $e->getMessage());
+}
+
+// Build expiringItems list (approaching retention within 30 days)
+$in30 = date('Y-m-d', strtotime('+30 days'));
+$expiringItems = [];
+foreach ($matchedItems as $it) {
+    $retEnd = $it['retention_end'] ?? '';
+    if ($retEnd && $retEnd !== '—' && $retEnd >= $today && $retEnd <= $in30) {
+        $expiringItems[] = array_merge($it, ['_retEnd' => $retEnd]);
+    }
+}
+foreach ($guestItems as $it) {
+    $dateEnc = $it['dateEncoded'] ?? $it['date_encoded'] ?? null;
+    $retEnd  = $dateEnc ? date('Y-m-d', strtotime($dateEnc . ' +1 year')) : '';
+    if ($retEnd && $retEnd >= $today && $retEnd <= $in30) {
+        $expiringItems[] = array_merge($it, ['_retEnd' => $retEnd]);
+    }
+}
 
 // Items resolved this month: from activity_log if available, else 0
 $itemsResolvedThisMonth = 0;
@@ -95,35 +127,37 @@ try {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/js/all.min.js"></script>
     <style>
-        /* Safety-net inline overrides for action buttons */
+        /* Action button overrides */
         .found-action-cell .found-btn-view {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
             padding: 6px 16px !important;
             border-radius: 6px !important;
-            background-color: #1976d2 !important;
+            background-color: #8b0000 !important;
             color: #ffffff !important;
             font-size: 12px !important;
-            font-weight: 500 !important;
+            font-weight: 600 !important;
             font-family: inherit !important;
             border: none !important;
             cursor: pointer !important;
         }
+        .found-action-cell .found-btn-view:hover { background-color: #6d0000 !important; }
         .found-action-cell .found-btn-claim {
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
             padding: 6px 16px !important;
             border-radius: 6px !important;
-            background-color: #22c55e !important;
+            background-color: #15803d !important;
             color: #ffffff !important;
             font-size: 12px !important;
-            font-weight: 500 !important;
+            font-weight: 600 !important;
             font-family: inherit !important;
             border: none !important;
             cursor: pointer !important;
         }
+        .found-action-cell .found-btn-claim:hover { background-color: #166534 !important; }
         .found-action-cell .found-btn-claim.btn-claim-expired {
             background-color: #9ca3af !important;
             cursor: not-allowed !important;
@@ -168,10 +202,10 @@ try {
   user-select: none;
 }
 .found-tab-text.found-tab-active {
-  background: #fff;
-  color: #111827;
+  background: #8b0000;
+  color: #fff;
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 4px rgba(139,0,0,0.25);
 }
 .found-filter-select {
   padding: 6px 10px;
@@ -183,6 +217,77 @@ try {
   background: #fff;
   cursor: pointer;
   min-width: 130px;
+}
+
+/* ── Expiry / Retention popup (matches FoundAdmin) ────────── */
+.expiry-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.42); z-index: 1200;
+  align-items: center; justify-content: center;
+}
+.expiry-overlay.open { display: flex; }
+.expiry-popup {
+  background: #fff; border-radius: 14px;
+  padding: 24px 26px 28px; width: min(720px, 96vw);
+  max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+}
+.expiry-popup-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.expiry-popup-title { font-size:16px; font-weight:700; color:#111; }
+.expiry-popup-close {
+  background:none; border:none; cursor:pointer;
+  font-size:18px; color:#6b7280; padding:2px 7px;
+  border-radius:5px; line-height:1; transition:background 0.15s;
+}
+.expiry-popup-close:hover { background:#f3f4f6; color:#111; }
+.expiry-cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; }
+.expiry-card {
+  background:#fff; border:1px solid #e0e0e0; border-radius:8px;
+  padding:16px; box-shadow:0 2px 5px rgba(0,0,0,0.05);
+  display:flex; flex-direction:column; gap:8px;
+}
+.expiry-card-title { margin:0; font-size:15px; font-weight:700; color:#111; display:flex; align-items:center; gap:9px; }
+.expiry-card-title i { font-size:16px; color:#374151; }
+.expiry-card-meta { display:flex; align-items:center; gap:9px; color:#555; font-size:13px; }
+.expiry-card-meta i { width:16px; text-align:center; }
+.expiry-card-badge {
+  display:inline-block; background:#fff3cd; color:#856404;
+  border:1px solid #ffc107; font-size:10px; font-weight:700;
+  padding:2px 8px; border-radius:10px; align-self:flex-start;
+}
+.expiry-card-footer { display:flex; justify-content:flex-end; margin-top:4px; }
+.btn-dispose-item {
+  background:#8b0000; color:#fff; border:none;
+  padding:8px 20px; border-radius:6px; font-size:13px;
+  font-weight:600; cursor:pointer; font-family:Poppins,sans-serif;
+  transition:opacity 0.15s;
+}
+.btn-dispose-item:hover { opacity:0.85; }
+.btn-dispose-item:disabled { opacity:0.5; cursor:not-allowed; }
+.expiry-empty-msg { color:#9ca3af; font-size:13px; font-style:italic; }
+.found-retention-bar {
+  display:flex; align-items:center; gap:12px;
+  background:#fff8f0; border:1px solid #fde68a;
+  border-radius:8px; padding:10px 16px; margin-top:14px;
+}
+.found-retention-text { font-size:13px; color:#374151; }
+.found-dispose-link {
+  font-size:12px; font-weight:600; color:#8b0000;
+  text-decoration:none; white-space:nowrap; margin-left:auto;
+}
+.found-dispose-link:hover { text-decoration:underline; }
+
+/* ── Tab icon sizing + button UI consistency ──────────────── */
+.found-tab-text i { font-size: 11px; }
+.found-action-cell .found-btn-view,
+.found-action-cell .found-btn-claim,
+.found-action-cell .ima-guest-view-btn {
+    min-width: 64px;
+    height: 32px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 7px;
+    letter-spacing: 0.01em;
 }
 </style>
 </head>
@@ -246,7 +351,7 @@ try {
                 <div class="admin-dropdown" id="adminDropdown">
                     <button type="button" class="admin-link admin-dropdown-trigger topbar-admin-trigger" aria-expanded="false" aria-haspopup="true" aria-label="Admin menu">
                         <i class="fa-regular fa-user"></i>
-                        <span class="admin-name">Admin</span>
+                        <span class="admin-name"><?php echo htmlspecialchars($adminName); ?></span>
                         <i class="fa-solid fa-chevron-down" style="font-size: 11px;"></i>
                     </button>
                     <div class="admin-dropdown-menu" role="menu">
@@ -262,17 +367,28 @@ try {
 
                     <h2 class="page-title">Matched Items</h2>
 
-                    <!-- Header: tabs + filter -->
+                    <!-- Header: tabs + View Inventory + dual filters -->
                     <div class="found-tabs-actions-row">
                         <div class="found-tabs">
-                            <span class="found-tab-text found-tab-active" id="allItemsTab">All Items</span>
-                            <span class="found-tab-text" id="guestItemsTab">Guest Items</span>
+                            <span class="found-tab-text found-tab-active" id="allItemsTab"><i class="fa-solid fa-list" style="margin-right:5px;font-size:12px;"></i>All Items</span>
+                            <span class="found-tab-text" id="guestItemsTab"><i class="fa-solid fa-user-group" style="margin-right:5px;font-size:12px;"></i>Guest Items</span>
                         </div>
+                        <a href="FoundAdmin.php" class="ima-view-inventory-btn">View Inventory</a>
+                        <!-- Category filter (All Items) -->
                         <select id="matchedCategoryFilter" class="found-filter-select" aria-label="Filter by category">
-                            <option value="">All Categories</option>
+                            <option value="">Filter By Category</option>
                             <?php foreach ($itemCategories as $c): ?>
                                 <option value="<?php echo htmlspecialchars($c); ?>"><?php echo htmlspecialchars($c); ?></option>
                             <?php endforeach; ?>
+                        </select>
+                        <!-- Date filter (Guest Items) — toggled by JS -->
+                        <select id="guestDateFilter" class="found-filter-select" style="display:none;" aria-label="Filter by date">
+                            <option value="">Filter By Date</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="3months">Last 3 Months</option>
+                            <option value="year">This Year</option>
                         </select>
                     </div>
 
@@ -318,7 +434,13 @@ try {
                                         $claimClass   = $isOverdue ? 'found-btn-claim btn-claim-expired' : 'found-btn-claim';
                                         $claimDisabled = $isOverdue ? ' disabled title="Retention period exceeded"' : '';
 
-                                        $itemDesc = htmlspecialchars($it['item_description'] ?? '', ENT_QUOTES, 'UTF-8');
+                                        $rawDesc = $it['item_description'] ?? '';
+                                        $itemDesc = htmlspecialchars($rawDesc, ENT_QUOTES, 'UTF-8');
+                                        // Extract "Item Type: X" as display name
+                                        $parsedItemName = '';
+                                        if (preg_match('/^Item(?:\s+Type)?:\s*(.+?)(?:\n|$)/mi', $rawDesc, $inm)) {
+                                            $parsedItemName = trim($inm[1]);
+                                        }
                                         $dataAttrs = ' data-id="' . $barcodeId . '"'
                                                    . ' data-category="' . $catFilter . '"'
                                                    . ' data-color="' . $color . '"'
@@ -328,6 +450,7 @@ try {
                                                    . ' data-storage-location="' . $storage . '"'
                                                    . ' data-status="' . $statusLabel . '"'
                                                    . ' data-item-description="' . $itemDesc . '"'
+                                                   . ' data-item-name="' . htmlspecialchars($parsedItemName) . '"'
                                                    . ' data-is-report="' . ($isReport ? '1' : '0') . '"'
                                                    . ($isReport ? ' data-user-id="' . htmlspecialchars($it['user_id'] ?? '') . '" data-date-lost="' . htmlspecialchars($it['date_lost'] ?? '') . '"' : '');
                                         if ($img) $dataAttrs .= ' data-image="' . $img . '"';
@@ -347,7 +470,6 @@ try {
                                         echo '</td>';
                                         echo '<td>' . $storage . '</td>';
                                         echo '<td class="found-action-cell">'
-                                           . '<button type="button" class="found-btn-view">View</button>'
                                            . '<button type="button" class="' . $claimClass . '"' . $claimDisabled . '>Claim</button>'
                                            . '</td>';
                                         echo '</tr>';
@@ -383,30 +505,31 @@ try {
                                     foreach ($guestItems as $it) {
                                         $barcodeId       = htmlspecialchars($it['id'] ?? '');
                                         $encodedBy       = htmlspecialchars($it['found_by'] ?? '');
-                                        $dateSurrendered = $it['dateEncoded'] ?? '';
+                                        $dateSurrendered = $it['dateEncoded'] ?? $it['date_encoded'] ?? '';
                                         $retentionEnd    = $dateSurrendered ? date('Y-m-d', strtotime($dateSurrendered . ' +1 year')) : '';
                                         $isOverdue       = $retentionEnd && $retentionEnd < $today;
                                         $isExpiring      = !$isOverdue && $retentionEnd && $retentionEnd <= date('Y-m-d', strtotime('+30 days'));
                                         $storage         = htmlspecialchars($it['storage_location'] ?? '');
                                         $timestamp       = htmlspecialchars($it['created_at'] ?? $it['dateEncoded'] ?? '');
                                         if ($timestamp && strlen($timestamp) === 10) $timestamp .= ' 00:00:00';
-                                        $img    = isset($it['imageDataUrl']) ? htmlspecialchars($it['imageDataUrl'], ENT_QUOTES, 'UTF-8') : '';
+                                        $img    = !empty($it['imageDataUrl']) ? htmlspecialchars($it['imageDataUrl'], ENT_QUOTES, 'UTF-8')
+                                                : (!empty($it['image_data']) ? htmlspecialchars($it['image_data'], ENT_QUOTES, 'UTF-8') : '');
                                         $color  = htmlspecialchars($it['color'] ?? '');
-                                        $brand  = htmlspecialchars($it['brand'] ?? '');
                                         $foundBy = htmlspecialchars($it['found_by'] ?? '');
-
-                                        $itemDesc = htmlspecialchars($it['item_description'] ?? '', ENT_QUOTES, 'UTF-8');
+                                        // Parse ID Type + Fullname from item_description
+                                        $gDesc     = $it['item_description'] ?? $it['itemDescription'] ?? '';
+                                        $gIdType   = preg_match('/^ID Type:\s*(.+?)(?:\n|$)/m', $gDesc, $gm) ? trim($gm[1]) : '';
+                                        $gFullname = preg_match('/^Fullname:\s*(.+?)(?:\n|$)/m',  $gDesc, $gm) ? trim($gm[1]) : '';
                                         $dataAttrs = ' data-id="' . $barcodeId . '"'
-                                                   . ' data-category="' . htmlspecialchars($it['item_type'] ?? '') . '"'
                                                    . ' data-color="' . $color . '"'
-                                                   . ' data-brand="' . $brand . '"'
                                                    . ' data-found-by="' . $foundBy . '"'
                                                    . ' data-date-encoded="' . htmlspecialchars($dateSurrendered) . '"'
                                                    . ' data-storage-location="' . $storage . '"'
-                                                   . ' data-item-description="' . $itemDesc . '"';
+                                                   . ' data-id-type="' . htmlspecialchars($gIdType) . '"'
+                                                   . ' data-fullname="' . htmlspecialchars($gFullname) . '"';
                                         if ($img) $dataAttrs .= ' data-image="' . $img . '"';
 
-                                        echo '<tr class="matched-data-row"' . $dataAttrs . '>';
+                                        echo '<tr class="matched-data-row guest-row"' . $dataAttrs . '>';
                                         echo '<td>' . $barcodeId . '</td>';
                                         echo '<td>' . $encodedBy . '</td>';
                                         echo '<td>' . htmlspecialchars($dateSurrendered) . '</td>';
@@ -420,9 +543,7 @@ try {
                                         echo '</td>';
                                         echo '<td>' . $storage . '</td>';
                                         echo '<td>' . $timestamp . '</td>';
-                                        echo '<td class="found-action-cell">'
-                                           . '<button type="button" class="found-btn-view">View</button>'
-                                           . '</td>';
+                                        echo '<td class="found-action-cell"><button type="button" class="ima-guest-view-btn">View</button></td>';
                                         echo '</tr>';
                                     }
                                 }
@@ -432,9 +553,12 @@ try {
                         </div>
                     </div>
 
-                    <div class="matched-footer">
-                        <span class="matched-footer-text">There are <strong><?php echo (int) $overdueCount; ?></strong> Item<?php echo $overdueCount !== 1 ? 's' : ''; ?> that have exceeded the retention policy.</span>
-                        <a href="HistoryAdmin.php" class="matched-dispose-link" id="matchedDisposeLink">View Claimed Items</a>
+                    <!-- Retention bar (matches FoundAdmin style) -->
+                    <div class="found-retention-bar" style="margin-top:14px;">
+                        <span class="found-retention-text">There are <strong><?php echo (int)$overdueCount; ?></strong> Item<?php echo $overdueCount !== 1 ? 's' : ''; ?> that have exceeded the retention policy.</span>
+                        <?php if (!empty($expiringItems)): ?>
+                        <a href="#" class="found-dispose-link" id="expiryTriggerLink">View Items</a>
+                        <?php endif; ?>
                     </div>
 
                 </section>
@@ -443,30 +567,421 @@ try {
     </main>
 </div>
 
-<!-- Item Details modal -->
-<div id="viewModal" class="view-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="viewModalTitle">
-    <div class="view-modal view-modal-matching" onclick="event.stopPropagation()">
-        <div class="view-modal-header">
-            <h3 id="viewModalTitle" class="view-modal-title">Item Details</h3>
-            <button type="button" class="view-modal-close" aria-label="Close" title="Close">&times;</button>
+<!-- Inline styles for new UI elements -->
+<style>
+/* View Inventory button */
+.ima-view-inventory-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 16px;
+    background: #8b0000;
+    color: #fff;
+    border-radius: 8px;
+    font-family: Poppins, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+    margin-left: 4px;
+}
+.ima-view-inventory-btn:hover { opacity: 0.88; }
+
+/* Guest View button (blue) */
+.ima-guest-view-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 16px;
+    border-radius: 6px;
+    background: #1976d2;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: Poppins, sans-serif;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.ima-guest-view-btn:hover { opacity: 0.85; }
+
+/* ── Guest Item Details Modal ──────────────────────────────────── */
+.gdm-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1500;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.5);
+}
+.gdm-overlay.open { display: flex; }
+.gdm-modal {
+    background: #fff; border-radius: 12px;
+    width: min(640px, 96vw); max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.22);
+    display: flex; flex-direction: column;
+}
+.gdm-header {
+    background: #8b0000; border-radius: 12px 12px 0 0;
+    padding: 14px 20px; display: flex;
+    align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.gdm-header-title { color: #fff; font-size: 16px; font-weight: 700; margin: 0; }
+.gdm-close-btn {
+    background: none; border: none; color: #fff; font-size: 18px;
+    cursor: pointer; padding: 2px 6px; border-radius: 4px;
+    opacity: 0.85; transition: opacity 0.15s; line-height: 1;
+}
+.gdm-close-btn:hover { opacity: 1; }
+.gdm-body { display: flex; flex: 1; }
+.gdm-left {
+    width: 38%; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding: 28px 16px 24px;
+    border-right: 1px solid #e5e7eb; background: #fafafa;
+}
+.gdm-photo {
+    width: 150px; height: 110px; object-fit: cover;
+    border-radius: 6px; border: 1px solid #e0e0e0;
+}
+.gdm-photo-placeholder {
+    width: 150px; height: 110px; background: #f3f4f6;
+    border-radius: 6px; border: 1px solid #e0e0e0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px; color: #9ca3af; font-size: 11px;
+}
+.gdm-barcode {
+    margin-top: 10px; font-size: 13px; color: #374151;
+    font-weight: 500; text-align: center;
+}
+.gdm-right {
+    flex: 1; padding: 28px 28px 20px;
+    display: flex; flex-direction: column;
+}
+.gdm-section-title {
+    font-size: 15px; font-weight: 700; color: #111827;
+    margin: 0 0 16px; text-align: center;
+}
+.gdm-info-row {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 7px 0; border-bottom: 1px solid #f3f4f6;
+}
+.gdm-info-row:last-child { border-bottom: none; }
+.gdm-info-label { font-size: 13px; color: #6b7280; min-width: 130px; flex-shrink: 0; }
+.gdm-info-value { font-size: 13px; font-weight: 700; color: #111827; text-align: right; flex: 1; }
+.gdm-footer {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 16px 24px; border-top: 1px solid #e5e7eb;
+}
+.gdm-btn-cancel {
+    padding: 9px 22px; border: 1px solid #d1d5db; border-radius: 7px;
+    background: #fff; color: #374151; font-family: Poppins, sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+}
+.gdm-btn-cancel:hover { background: #f3f4f6; }
+.gdm-btn-claim {
+    padding: 9px 22px; border: none; border-radius: 7px;
+    background: #8b0000; color: #fff; font-family: Poppins, sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+}
+.gdm-btn-claim:hover { opacity: 0.88; }
+
+/* ── Confirm Item Claim Modal ─────────────────────────────────── */
+.ccm-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1600;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.5);
+}
+.ccm-overlay.open { display: flex; }
+.ccm-modal {
+    background: #fff; border-radius: 12px;
+    width: min(520px, 96vw); max-height: 92vh; overflow-y: auto;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+    display: flex; flex-direction: column;
+}
+.ccm-header {
+    background: #8b0000; border-radius: 12px 12px 0 0;
+    padding: 14px 20px; display: flex;
+    align-items: center; justify-content: space-between;
+}
+.ccm-header-title { color: #fff; font-size: 15px; font-weight: 700; margin: 0; }
+.ccm-close-btn {
+    background: none; border: none; color: #fff; font-size: 18px;
+    cursor: pointer; padding: 2px 6px; border-radius: 4px;
+    opacity: 0.85; transition: opacity 0.15s; line-height: 1;
+}
+.ccm-close-btn:hover { opacity: 1; }
+.ccm-body { padding: 20px 24px 8px; }
+.ccm-item-summary {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px; background: #f9fafb;
+    border-radius: 8px; border: 1px solid #e5e7eb;
+    margin-bottom: 18px;
+}
+.ccm-thumb {
+    width: 52px; height: 52px; border-radius: 6px;
+    object-fit: cover; flex-shrink: 0;
+}
+.ccm-thumb-placeholder {
+    width: 52px; height: 52px; border-radius: 6px;
+    background: #e5e7eb; display: flex;
+    align-items: center; justify-content: center;
+    color: #9ca3af; font-size: 20px; flex-shrink: 0;
+}
+.ccm-item-info { display: flex; flex-direction: column; gap: 3px; }
+.ccm-item-name { font-size: 14px; font-weight: 700; color: #111827; }
+.ccm-item-sub  { font-size: 12px; color: #6b7280; }
+/* Yellow verification block */
+.ccm-section-yellow {
+    background: #fffbeb; border: 1px solid #fcd34d;
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 14px;
+}
+.ccm-section-title-yellow {
+    font-size: 13px; font-weight: 700; color: #92400e;
+    margin: 0 0 14px; text-align: center;
+}
+.ccm-form-row {
+    display: flex; align-items: center;
+    gap: 10px; margin-bottom: 10px;
+}
+.ccm-form-row:last-child { margin-bottom: 0; }
+.ccm-label {
+    font-size: 12px; color: #374151; font-weight: 500;
+    min-width: 118px; flex-shrink: 0;
+}
+.ccm-input {
+    flex: 1; padding: 7px 10px;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    font-family: Poppins, sans-serif; font-size: 12px;
+    color: #111827; background: #fff; outline: none;
+    transition: border-color 0.15s;
+}
+.ccm-input:focus { border-color: #8b0000; }
+.ccm-required { color: #dc2626; font-size: 12px; }
+.ccm-file-row {
+    display: flex; align-items: center; gap: 6px; flex: 1;
+    padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+    background: #fff; font-size: 12px; color: #374151; cursor: pointer;
+    position: relative; overflow: hidden;
+}
+.ccm-file-input {
+    position: absolute; inset: 0; opacity: 0;
+    cursor: pointer; width: 100%; height: 100%;
+}
+.ccm-file-clear {
+    margin-left: auto; background: none; border: none;
+    cursor: pointer; color: #9ca3af; font-size: 13px;
+    padding: 0; flex-shrink: 0; display: none;
+    z-index: 1;
+}
+/* Gray action taken block */
+.ccm-section-gray {
+    background: #f3f4f6; border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 14px;
+}
+.ccm-section-title-gray {
+    font-size: 13px; font-weight: 700; color: #374151; margin: 0 0 14px;
+}
+
+.ccm-footer {
+    display: flex; justify-content: flex-end;
+    gap: 10px; padding: 14px 24px 20px;
+}
+.ccm-btn-cancel {
+    padding: 9px 22px; border: 1px solid #d1d5db; border-radius: 7px;
+    background: #fff; color: #374151; font-family: Poppins, sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.ccm-btn-cancel:hover { background: #f3f4f6; }
+.ccm-btn-confirm {
+    padding: 9px 22px; border: none; border-radius: 7px;
+    background: #8b0000; color: #fff; font-family: Poppins, sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+}
+.ccm-btn-confirm:hover { opacity: 0.88; }
+.ccm-btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 520px) {
+    .gdm-body { flex-direction: column; }
+    .gdm-left { width: 100%; border-right: none; border-bottom: 1px solid #e5e7eb; }
+}
+</style>
+
+<!-- Expiry Items popup -->
+<div class="expiry-overlay" id="expiryOverlay" role="dialog" aria-modal="true"
+     aria-labelledby="expiryPopupTitle"
+     onclick="if(event.target===this)document.getElementById('expiryOverlay').classList.remove('open')">
+    <div class="expiry-popup">
+        <div class="expiry-popup-hdr">
+            <span class="expiry-popup-title" id="expiryPopupTitle">Items with Approaching Retention Dates</span>
+            <button type="button" class="expiry-popup-close" id="expiryPopupClose" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
-        <div class="view-modal-content">
-            <div class="view-modal-left">
-                <div class="view-modal-image-wrap">
-                    <div id="viewModalImage" class="view-modal-image"></div>
-                    <div id="viewModalBarcode" class="view-modal-barcode"></div>
+        <div class="expiry-cards-grid" id="expiryCardsGrid">
+<?php if (empty($expiringItems)): ?>
+            <p class="expiry-empty-msg">No items approaching expiry within the next 30 days.</p>
+<?php else: ?>
+<?php foreach ($expiringItems as $ei):
+    $eiId    = htmlspecialchars($ei['id'] ?? '');
+    $eiCat   = htmlspecialchars($ei['item_type'] ?? 'Item');
+    $eiDesc  = $ei['item_description'] ?? $ei['itemDescription'] ?? '';
+    $eiShort = htmlspecialchars(mb_strlen($eiDesc) > 60 ? mb_substr($eiDesc, 0, 60) . '...' : $eiDesc);
+    $eiLoc   = htmlspecialchars($ei['found_at'] ?? $ei['storage_location'] ?? 'N/A');
+    $eiDate  = htmlspecialchars($ei['_retEnd'] ?? '');
+    $eiStore = htmlspecialchars($ei['storage_location'] ?? '');
+?>
+            <div class="expiry-card" data-id="<?php echo $eiId; ?>"
+                 data-storage-location="<?php echo $eiStore; ?>">
+                <h4 class="expiry-card-title">
+                    <i class="fa-regular fa-file-lines"></i>
+                    <?php echo $eiCat; ?>
+                </h4>
+                <div class="expiry-card-meta">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <span><?php echo $eiLoc; ?></span>
                 </div>
-                <h4 class="view-modal-section-title">General Information</h4>
-                <div id="viewModalBody" class="view-modal-body"></div>
-                <h4 class="view-modal-section-title">Potential Claimants</h4>
-                <div id="viewModalClaimants" class="view-modal-claimants">
-                    <p class="view-modal-loading">Loading potential claimants…</p>
+                <div class="expiry-card-meta">
+                    <i class="fa-regular fa-calendar"></i>
+                    <span>Expires: <?php echo $eiDate; ?></span>
+                </div>
+                <span class="expiry-card-badge">Expiring Soon</span>
+            </div>
+<?php endforeach; ?>
+<?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<!-- Guest Item Details Modal (Image 1) -->
+<div id="guestDetailsModal" class="gdm-overlay" role="dialog" aria-modal="true"
+     onclick="if(event.target===this)closeGuestDetailsModal()">
+    <div class="gdm-modal" onclick="event.stopPropagation()">
+        <div class="gdm-header">
+            <h3 class="gdm-header-title">Item Details</h3>
+            <button type="button" class="gdm-close-btn" onclick="closeGuestDetailsModal()" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="gdm-body">
+            <div class="gdm-left">
+                <div id="gdmPhotoPlaceholder" class="gdm-photo-placeholder">
+                    <i class="fa-regular fa-id-card" style="font-size:28px;"></i>
+                    <span>No photo</span>
+                </div>
+                <img id="gdmPhoto" class="gdm-photo" src="" alt="ID photo" style="display:none;">
+                <p class="gdm-barcode" id="gdmBarcode">Barcode ID: —</p>
+            </div>
+            <div class="gdm-right">
+                <h4 class="gdm-section-title">General Information</h4>
+                <div class="gdm-info-row">
+                    <span class="gdm-info-label">ID Type:</span>
+                    <span class="gdm-info-value" id="gdmIdType">—</span>
+                </div>
+                <div class="gdm-info-row">
+                    <span class="gdm-info-label">Fullname:</span>
+                    <span class="gdm-info-value" id="gdmFullname">—</span>
+                </div>
+                <div class="gdm-info-row">
+                    <span class="gdm-info-label">Color:</span>
+                    <span class="gdm-info-value" id="gdmColor">—</span>
+                </div>
+                <div class="gdm-info-row">
+                    <span class="gdm-info-label">Storage Location:</span>
+                    <span class="gdm-info-value" id="gdmStorage">—</span>
+                </div>
+                <div class="gdm-info-row">
+                    <span class="gdm-info-label">Encoded By:</span>
+                    <span class="gdm-info-value" id="gdmEncodedBy">—</span>
+                </div>
+                <div class="gdm-info-row">
+                    <span class="gdm-info-label">Date Surrendered:</span>
+                    <span class="gdm-info-value" id="gdmDateSurrendered">—</span>
                 </div>
             </div>
         </div>
-        <div class="view-modal-footer">
-            <button type="button" class="view-modal-btn-cancel" id="viewModalCancel">Cancel</button>
-            <button type="button" class="view-modal-btn-next" id="viewModalNext">Next</button>
+        <div class="gdm-footer">
+            <button type="button" class="gdm-btn-cancel" onclick="closeGuestDetailsModal()">Cancel</button>
+            <button type="button" class="gdm-btn-claim" id="gdmClaimBtn">Claim</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Item Claim Modal (Image 2) -->
+<div id="confirmClaimModal" class="ccm-overlay" role="dialog" aria-modal="true"
+     onclick="if(event.target===this)closeConfirmClaimModal()">
+    <div class="ccm-modal" onclick="event.stopPropagation()">
+        <div class="ccm-header">
+            <h3 class="ccm-header-title">Confirm Item Claim</h3>
+            <button type="button" class="ccm-close-btn" onclick="closeConfirmClaimModal()" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="ccm-body">
+            <!-- Item summary strip -->
+            <div class="ccm-item-summary">
+                <div class="ccm-thumb-placeholder" id="ccmThumbPlaceholder">
+                    <i class="fa-solid fa-box"></i>
+                </div>
+                <img id="ccmThumb" class="ccm-thumb" src="" alt="" style="display:none;">
+                <div class="ccm-item-info">
+                    <span class="ccm-item-name" id="ccmItemName">—</span>
+                    <span class="ccm-item-sub"  id="ccmItemSub">—</span>
+                </div>
+            </div>
+
+            <!-- Verification of Claimant's Identity -->
+            <div class="ccm-section-yellow">
+                <p class="ccm-section-title-yellow">Verification of Claimant's Identity</p>
+                <div class="ccm-form-row">
+                    <label class="ccm-label" for="ccmClaimantName">Claimant's Name:</label>
+                    <div style="flex:1;position:relative;">
+                        <input type="text" id="ccmClaimantName" class="ccm-input" style="padding-right:22px;width:100%;box-sizing:border-box;" required>
+                        <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#dc2626;font-size:13px;pointer-events:none;">*</span>
+                    </div>
+                </div>
+                <div class="ccm-form-row" style="align-items:flex-start;">
+                    <label class="ccm-label" for="ccmUbMail" style="padding-top:8px;">UB Mail:</label>
+                    <div style="flex:1;">
+                        <input type="text" id="ccmUbMail" class="ccm-input" placeholder="e.g. 200981@ub.edu.ph">
+                        <span id="ccmUbMailError" style="display:none;font-size:11px;color:#dc2626;margin-top:3px;display:block;">
+                            Must be a valid @ub.edu.ph email address.
+                        </span>
+                    </div>
+                </div>
+                <div class="ccm-form-row">
+                    <label class="ccm-label" for="ccmContactNumber">Contact Number:</label>
+                    <input type="text" id="ccmContactNumber" class="ccm-input">
+                </div>
+                <div class="ccm-form-row">
+                    <label class="ccm-label">Upload Image: <span style="color:#dc2626;">*</span></label>
+                    <div class="ccm-file-row" id="ccmFileRow">
+                        <input type="file" id="ccmFileInput" class="ccm-file-input" accept="image/*"
+                               onchange="handleCcmFile(this)">
+                        <i class="fa-solid fa-image" style="color:#9ca3af;font-size:13px;"></i>
+                        <span id="ccmFileName" style="font-size:12px;color:#6b7280;">No file chosen</span>
+                        <button type="button" id="ccmFileClear" class="ccm-file-clear"
+                                onclick="clearCcmFile(event)">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+                <span id="ccmFileError" style="display:none;font-size:11px;color:#dc2626;margin-top:-6px;margin-bottom:4px;padding-left:130px;">
+                    A photo is required to confirm the claim.
+                </span>
+            </div>
+
+            <!-- Action Taken -->
+            <div class="ccm-section-gray">
+                <p class="ccm-section-title-gray">Action Taken</p>
+                <div class="ccm-form-row">
+                    <label class="ccm-label" for="ccmDateAccomplishment">Date of Accomplishment:</label>
+                    <input type="date" id="ccmDateAccomplishment" class="ccm-input" style="flex:1;">
+                </div>
+            </div>
+        </div>
+        <div class="ccm-footer">
+            <button type="button" class="ccm-btn-cancel" onclick="closeConfirmClaimModal()">Cancel</button>
+            <button type="button" class="ccm-btn-confirm" id="ccmConfirmBtn">Confirm</button>
         </div>
     </div>
 </div>
@@ -474,272 +989,39 @@ try {
 <script>
 /* Admin dropdown */
 (function () {
-    var dropdown = document.getElementById('adminDropdown');
-    var trigger  = dropdown && dropdown.querySelector('.admin-dropdown-trigger');
-    if (!dropdown || !trigger) return;
-    trigger.addEventListener('click', function (e) {
+    var dd = document.getElementById('adminDropdown');
+    var tr = dd && dd.querySelector('.admin-dropdown-trigger');
+    if (!dd || !tr) return;
+    tr.addEventListener('click', function (e) {
         e.stopPropagation();
-        dropdown.classList.toggle('open');
-        trigger.setAttribute('aria-expanded', dropdown.classList.contains('open'));
+        dd.classList.toggle('open');
+        tr.setAttribute('aria-expanded', dd.classList.contains('open'));
     });
     document.addEventListener('click', function () {
-        dropdown.classList.remove('open');
-        trigger.setAttribute('aria-expanded', 'false');
+        dd.classList.remove('open');
+        tr.setAttribute('aria-expanded', 'false');
     });
 })();
 
 /* Search clear */
 (function () {
-    var input    = document.getElementById('adminSearchInput');
-    var clearBtn = document.getElementById('adminSearchClear');
-    if (!input || !clearBtn) return;
-    function syncClear() { clearBtn.style.display = input.value ? 'flex' : 'none'; }
-    clearBtn.addEventListener('click', function () { input.value = ''; input.focus(); syncClear(); });
-    input.addEventListener('input', syncClear);
-    syncClear();
+    var inp = document.getElementById('adminSearchInput');
+    var clr = document.getElementById('adminSearchClear');
+    if (!inp || !clr) return;
+    function sync() { clr.style.display = inp.value ? 'flex' : 'none'; }
+    clr.addEventListener('click', function () { inp.value = ''; inp.focus(); sync(); });
+    inp.addEventListener('input', sync);
+    sync();
 })();
 
-/* Category filter */
-(function () {
-    var filter = document.getElementById('matchedCategoryFilter');
-    if (!filter) return;
-    filter.addEventListener('change', function () {
-        var val = (filter.value || '').trim();
-        document.querySelectorAll('.matched-data-row').forEach(function (row) {
-            var cat = (row.getAttribute('data-category') || '').trim();
-            row.style.display = (!val || cat === val) ? '' : 'none';
-        });
-    });
-})();
-
-/* View modal with Potential Claimants / Matching Found Items */
-(function () {
-    var modal      = document.getElementById('viewModal');
-    var imageEl    = document.getElementById('viewModalImage');
-    var barcodeEl  = document.getElementById('viewModalBarcode');
-    var bodyEl     = document.getElementById('viewModalBody');
-    var claimantsEl = document.getElementById('viewModalClaimants');
-    var sectionTitle = claimantsEl ? claimantsEl.previousElementSibling : null;
-    var claimUrl   = '../get_potential_claimants.php';
-    var foundItemsUrl = '../get_matching_found_items.php';
-    if (!modal || !bodyEl || !claimantsEl) return;
-
-    function esc(s) {
-        return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    function parseItemFromDesc(desc) {
-        if (!desc) return '';
-        var m = desc.match(/Item Type:\s*(.+?)(?:\n|$)/);
-        return m ? m[1].trim() : '';
-    }
-
-    function openModalFromRow(row) {
-        var cells   = row.querySelectorAll('td');
-        var barcodeId = row.getAttribute('data-id') || (cells[0] ? cells[0].textContent.trim() : '');
-        var imgUrl  = row.getAttribute('data-image');
-        var itemDesc = row.getAttribute('data-item-description') || '';
-        var isReport = row.getAttribute('data-is-report') === '1';
-
-        if (imgUrl) {
-            imageEl.innerHTML = '<img src="' + esc(imgUrl) + '" alt="Item">';
-            imageEl.classList.remove('view-modal-image-placeholder');
-        } else {
-            imageEl.innerHTML = '<div class="view-modal-image-placeholder-inner"><span class="view-modal-image-icon" aria-hidden="true">&#128230;</span><span>Item image</span></div>';
-            imageEl.classList.add('view-modal-image-placeholder');
-        }
-        barcodeEl.textContent = (isReport ? 'Reference ID: ' : 'Barcode ID: ') + (barcodeId || '—');
-        barcodeEl.style.display = 'block';
-
-        var isGuest = row.closest('#guestReportsTable') !== null;
-        var itemLabel = parseItemFromDesc(itemDesc) || row.getAttribute('data-category') || '';
-        var pairs;
-        if (isReport) {
-            pairs = [
-                { label: 'Category',       value: row.getAttribute('data-category') || '' },
-                { label: 'Item Type',     value: itemLabel },
-                { label: 'Color',          value: row.getAttribute('data-color') || '' },
-                { label: 'Brand',         value: row.getAttribute('data-brand') || '' },
-                { label: 'Student Number', value: row.getAttribute('data-user-id') || '' },
-                { label: 'Date Lost',     value: row.getAttribute('data-date-lost') || cells[3] ? cells[3].textContent.trim() : '' }
-            ];
-        } else if (isGuest) {
-            pairs = [
-                { label: 'Category',          value: row.getAttribute('data-category') || '' },
-                { label: 'Item',              value: itemLabel },
-                { label: 'Color',             value: row.getAttribute('data-color') || '' },
-                { label: 'Brand',             value: row.getAttribute('data-brand') || '' },
-                { label: 'Storage Location',  value: cells[4] ? cells[4].textContent.trim() : '' },
-                { label: 'Encoded By',        value: cells[1] ? cells[1].textContent.trim() : '' },
-                { label: 'Date Surrendered',  value: cells[2] ? cells[2].textContent.trim() : '' }
-            ];
-        } else {
-            pairs = [
-                { label: 'Category',          value: row.getAttribute('data-category') || '' },
-                { label: 'Item',              value: itemLabel },
-                { label: 'Color',             value: row.getAttribute('data-color') || '' },
-                { label: 'Brand',             value: row.getAttribute('data-brand') || '' },
-                { label: 'Item Description',  value: itemDesc.replace(/^Item Type:.*$/m, '').trim() || '' },
-                { label: 'Storage Location',  value: row.getAttribute('data-storage-location') || '' },
-                { label: 'Found At',          value: cells[2] ? cells[2].textContent.trim() : '' },
-                { label: 'Found By',          value: row.getAttribute('data-found-by') || '' },
-                { label: 'Date Found',        value: cells[3] ? cells[3].textContent.trim() : '' }
-            ];
-        }
-
-        bodyEl.innerHTML = pairs
-            .filter(function (p) { return p.value && String(p.value).trim() !== ''; })
-            .map(function (p) {
-                return '<div class="view-modal-row"><span class="view-modal-label">' + esc(p.label) + ':</span><span class="view-modal-value">' + esc(String(p.value)) + '</span></div>';
-            }).join('') || '<p class="view-modal-empty">No details available.</p>';
-
-        modal.classList.add('view-modal-open');
-        modal.setAttribute('data-current-barcode', barcodeId);
-        modal.setAttribute('data-is-report', isReport ? '1' : '0');
-
-        if (sectionTitle) sectionTitle.textContent = isReport ? 'Matching Found Items' : 'Potential Claimants';
-        var nextBtn = document.getElementById('viewModalNext');
-        if (nextBtn) nextBtn.style.display = isReport ? 'none' : '';
-
-        if (isReport) {
-            claimantsEl.innerHTML = '<p class="view-modal-loading">Loading matching found items…</p>';
-            fetch(foundItemsUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: barcodeId })
-            })
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data.ok && data.found_items && data.found_items.length > 0) {
-                    var html = '<div class="view-modal-claimants-list">';
-                    data.found_items.forEach(function (f) {
-                        html += '<div class="view-modal-claimant-item"><span>' + esc(f.id) + '</span></div>';
-                    });
-                    html += '</div>';
-                    claimantsEl.innerHTML = html;
-                } else {
-                    claimantsEl.innerHTML = '<p class="view-modal-empty">No matching found items yet.</p>';
-                }
-            })
-            .catch(function () {
-                claimantsEl.innerHTML = '<p class="view-modal-empty">Could not load matching found items.</p>';
-            });
-        } else {
-            claimantsEl.innerHTML = '<p class="view-modal-loading">Loading potential claimants…</p>';
-            fetch(claimUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: barcodeId })
-            })
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data.ok && data.claimants && data.claimants.length > 0) {
-                    var html = '<div class="view-modal-claimants-list">';
-                    data.claimants.forEach(function (c) {
-                        var email = c.email || c.user_id || '';
-                        html += '<label class="view-modal-claimant-item"><input type="radio" name="claimant" value="' + esc(email) + '" data-report-id="' + esc(c.report_id || '') + '"><span>' + esc(email) + '</span></label>';
-                    });
-                    html += '</div>';
-                    claimantsEl.innerHTML = html;
-                } else {
-                    claimantsEl.innerHTML = '<p class="view-modal-empty">No potential claimants found based on report data.</p>';
-                }
-            })
-            .catch(function () {
-                claimantsEl.innerHTML = '<p class="view-modal-empty">Could not load potential claimants.</p>';
-            });
-        }
-    }
-
-    function closeModal() { modal.classList.remove('view-modal-open'); }
-
-    function bindViewToTable(tbl) {
-        if (!tbl) return;
-        tbl.addEventListener('click', function (e) {
-            var btn = e.target.closest('.found-btn-view');
-            if (!btn) return;
-            e.preventDefault();
-            var r = btn.closest('tr');
-            if (r && !r.querySelector('td[colspan]')) openModalFromRow(r);
-        });
-    }
-    bindViewToTable(document.getElementById('matchedReportsTable'));
-    bindViewToTable(document.getElementById('guestReportsTable'));
-
-    var closeBtn = modal.querySelector('.view-modal-close');
-    if (closeBtn) closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
-    var cancelBtn = document.getElementById('viewModalCancel');
-    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-
-    var nextBtn = document.getElementById('viewModalNext');
-    if (nextBtn) {
-        nextBtn.addEventListener('click', function () {
-            var selected = modal.querySelector('input[name="claimant"]:checked');
-            var barcode = modal.getAttribute('data-current-barcode');
-            if (selected && barcode) {
-                closeModal();
-            } else {
-                closeModal();
-            }
-        });
-    }
-})();
-
-/* Claim button */
-(function () {
-    var claimUrl = '../claim_item.php';
-
-    function onClaimClick(e) {
-        var btn = e.target.closest('.found-btn-claim');
-        if (!btn || btn.disabled || btn.classList.contains('btn-claim-expired')) return;
-        e.preventDefault();
-        var tr = btn.closest('tr');
-        if (!tr || tr.querySelector('td[colspan]')) return;
-        var id = tr.getAttribute('data-id') || (tr.querySelector('td') && tr.querySelector('td').textContent.trim());
-        if (!id) return;
-        if (!confirm('Claim this item? It will be moved to History as Claimed.')) return;
-        btn.disabled = true;
-        fetch(claimUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: id })
-        })
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-            if (data.ok) {
-                var tbody    = tr.parentNode;
-                var colCount = tr.querySelectorAll('td').length;
-                tr.remove();
-                if (tbody && tbody.querySelectorAll('tr').length === 0) {
-                    var empty = document.createElement('tr');
-                    empty.innerHTML = '<td colspan="' + colCount + '" class="table-empty">No items.</td>';
-                    tbody.appendChild(empty);
-                }
-            } else {
-                btn.disabled = false;
-                alert(data.error || 'Could not claim item.');
-            }
-        })
-        .catch(function () {
-            btn.disabled = false;
-            alert('Could not claim item. Try again.');
-        });
-    }
-
-    var tbl1 = document.getElementById('matchedReportsTable');
-    var tbl2 = document.getElementById('guestReportsTable');
-    if (tbl1) tbl1.addEventListener('click', onClaimClick);
-    if (tbl2) tbl2.addEventListener('click', onClaimClick);
-})();
-
-/* Tab switching */
+/* ── Tab switching: show/hide sections + swap filters ─────────── */
 (function () {
     var allTab    = document.getElementById('allItemsTab');
     var guestTab  = document.getElementById('guestItemsTab');
     var recovered = document.getElementById('recoveredSection');
     var guest     = document.getElementById('guestSection');
+    var catFilter  = document.getElementById('matchedCategoryFilter');
+    var dateFilter = document.getElementById('guestDateFilter');
     if (!allTab || !guestTab || !recovered || !guest) return;
 
     function showAll() {
@@ -747,19 +1029,333 @@ try {
         guestTab.classList.remove('found-tab-active');
         recovered.style.display = '';
         guest.style.display     = 'none';
+        if (catFilter)  catFilter.style.display  = '';
+        if (dateFilter) dateFilter.style.display = 'none';
     }
     function showGuest() {
         guestTab.classList.add('found-tab-active');
         allTab.classList.remove('found-tab-active');
         guest.style.display     = '';
         recovered.style.display = 'none';
+        if (catFilter)  catFilter.style.display  = 'none';
+        if (dateFilter) dateFilter.style.display = '';
     }
-
     allTab.addEventListener('click', showAll);
     guestTab.addEventListener('click', showGuest);
     if (window.location.hash === '#guest') showGuest();
 })();
+
+/* ── Category filter (All Items) ─────────────────────────────── */
+(function () {
+    var f = document.getElementById('matchedCategoryFilter');
+    if (!f) return;
+    f.addEventListener('change', function () {
+        var val = f.value.trim();
+        document.querySelectorAll('#recoveredSection .matched-data-row').forEach(function (row) {
+            var cat = (row.getAttribute('data-category') || '').trim();
+            row.style.display = (!val || cat === val) ? '' : 'none';
+        });
+    });
+})();
+
+/* ── Date filter (Guest Items) ───────────────────────────────── */
+(function () {
+    var f = document.getElementById('guestDateFilter');
+    if (!f) return;
+    f.addEventListener('change', function () {
+        var val = f.value.trim();
+        var now = new Date();
+        document.querySelectorAll('#guestSection .guest-row').forEach(function (row) {
+            var ds = row.getAttribute('data-date-encoded') || '';
+            var d  = ds ? new Date(ds) : null;
+            var show = true;
+            if (val && d) {
+                if      (val === 'today')   { show = d.toDateString() === now.toDateString(); }
+                else if (val === 'week')    { var w = new Date(now); w.setDate(w.getDate()-7); show = d >= w; }
+                else if (val === 'month')   { var m = new Date(now); m.setMonth(m.getMonth()-1); show = d >= m; }
+                else if (val === '3months') { var q = new Date(now); q.setMonth(q.getMonth()-3); show = d >= q; }
+                else if (val === 'year')    { var y = new Date(now); y.setFullYear(y.getFullYear()-1); show = d >= y; }
+            } else if (val && !d) { show = false; }
+            row.style.display = show ? '' : 'none';
+        });
+    });
+})();
+
+/* ── Guest Item Details Modal ─────────────────────────────────── */
+window._gdmRow = null;
+
+window.openGuestDetailsModal = function (row) {
+    window._gdmRow = row;
+    var o = document.getElementById('guestDetailsModal');
+    if (!o) return;
+    var ph   = document.getElementById('gdmPhotoPlaceholder');
+    var img  = document.getElementById('gdmPhoto');
+    var bid  = document.getElementById('gdmBarcode');
+    var idT  = document.getElementById('gdmIdType');
+    var fn   = document.getElementById('gdmFullname');
+    var col  = document.getElementById('gdmColor');
+    var sto  = document.getElementById('gdmStorage');
+    var enc  = document.getElementById('gdmEncodedBy');
+    var ds   = document.getElementById('gdmDateSurrendered');
+
+    var imgUrl = row.getAttribute('data-image');
+    if (imgUrl) { img.src = imgUrl; img.style.display = 'block'; ph.style.display = 'none'; }
+    else        { img.style.display = 'none'; ph.style.display = 'flex'; }
+
+    function v(a) { return row.getAttribute(a) || '—'; }
+    if (bid) bid.textContent = 'Barcode ID: ' + (row.getAttribute('data-id') || '—');
+    if (idT) idT.textContent = v('data-id-type');
+    if (fn)  fn.textContent  = v('data-fullname');
+    if (col) col.textContent = v('data-color');
+    if (sto) sto.textContent = v('data-storage-location');
+    if (enc) enc.textContent = v('data-found-by');
+    if (ds)  ds.textContent  = v('data-date-encoded');
+
+    o.classList.add('open');
+    document.body.style.overflow = 'hidden';
+};
+window.closeGuestDetailsModal = function () {
+    var o = document.getElementById('guestDetailsModal');
+    if (o) o.classList.remove('open');
+    document.body.style.overflow = '';
+};
+
+/* Wire Guest View buttons */
+(function () {
+    var tbody = document.querySelector('#guestSection tbody');
+    if (!tbody) return;
+    tbody.addEventListener('click', function (e) {
+        var btn = e.target.closest('.ima-guest-view-btn');
+        if (!btn) return;
+        e.preventDefault();
+        var r = btn.closest('tr');
+        if (r) window.openGuestDetailsModal(r);
+    });
+})();
+
+/* Guest modal Claim → opens Confirm modal */
+(function () {
+    var btn = document.getElementById('gdmClaimBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        var row = window._gdmRow;
+        if (!row) return;
+        closeGuestDetailsModal();
+        openConfirmClaimModal(row);
+    });
+})();
+
+/* ── Confirm Item Claim Modal ─────────────────────────────────── */
+window._ccmRow = null;
+window._ccmImg = null;
+
+window.openConfirmClaimModal = function (row) {
+    window._ccmRow = row;
+    window._ccmImg = null;
+
+    var o   = document.getElementById('confirmClaimModal');
+    var th  = document.getElementById('ccmThumb');
+    var thP = document.getElementById('ccmThumbPlaceholder');
+    var nm  = document.getElementById('ccmItemName');
+    var sb  = document.getElementById('ccmItemSub');
+
+    var imgUrl   = row.getAttribute('data-image');
+    var bid      = row.getAttribute('data-id')               || '';
+    var color    = row.getAttribute('data-color')            || '';
+    var storage  = row.getAttribute('data-storage-location') || '';
+    var fullname = row.getAttribute('data-fullname')         || '';
+    var category = row.getAttribute('data-category')         || '';
+    var isGuest  = row.classList.contains('guest-row');
+
+    if (imgUrl) { th.src = imgUrl; th.style.display = 'block'; thP.style.display = 'none'; }
+    else        { th.style.display = 'none'; thP.style.display = 'flex'; }
+
+    /* Use parsed item name if available, otherwise fall back gracefully */
+    var itemName = row.getAttribute('data-item-name') || '';
+    var displayName;
+    if (isGuest && fullname) {
+        displayName = bid + ': ' + fullname + (color ? ' (' + color + ')' : '');
+    } else if (itemName) {
+        displayName = bid + ': ' + itemName + (color ? ' — ' + color : '');
+    } else {
+        displayName = bid + ': ' + (category || 'Item');
+    }
+    if (nm) nm.textContent = displayName;
+    if (sb) sb.textContent = storage || '—';
+
+    /* Reset form */
+    ['ccmClaimantName','ccmUbMail','ccmContactNumber'].forEach(function (id) {
+        var el = document.getElementById(id); if (el) { el.value = ''; el.style.borderColor = ''; }
+    });
+    var ubErr = document.getElementById('ccmUbMailError');
+    if (ubErr) ubErr.style.display = 'none';
+    var fileErr = document.getElementById('ccmFileError');
+    if (fileErr) fileErr.style.display = 'none';
+    clearCcmFile(null);
+    var dt = document.getElementById('ccmDateAccomplishment');
+    if (dt) dt.value = new Date().toISOString().slice(0, 10);
+
+    o.classList.add('open');
+    document.body.style.overflow = 'hidden';
+};
+/* UB mail live validation */
+(function () {
+    var ubInput = document.getElementById('ccmUbMail');
+    var ubError = document.getElementById('ccmUbMailError');
+    if (!ubInput || !ubError) return;
+    ubInput.addEventListener('input', function () {
+        var v = this.value.trim();
+        if (v && !/^[^@]+@ub\.edu\.ph$/i.test(v)) {
+            ubError.style.display = 'block';
+            ubInput.style.borderColor = '#dc2626';
+        } else {
+            ubError.style.display = 'none';
+            ubInput.style.borderColor = '';
+        }
+    });
+})();
+
+window.closeConfirmClaimModal = function () {
+    var o = document.getElementById('confirmClaimModal');
+    if (o) o.classList.remove('open');
+    document.body.style.overflow = '';
+};
+
+window.handleCcmFile = function (input) {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var nm = document.getElementById('ccmFileName');
+    var cl = document.getElementById('ccmFileClear');
+    if (nm) nm.textContent = file.name;
+    if (cl) cl.style.display = 'inline-flex';
+    var r = new FileReader();
+    r.onload = function (e) { window._ccmImg = e.target.result; };
+    r.readAsDataURL(file);
+};
+window.clearCcmFile = function (e) {
+    if (e) e.stopPropagation();
+    window._ccmImg = null;
+    var inp = document.getElementById('ccmFileInput');
+    var nm  = document.getElementById('ccmFileName');
+    var cl  = document.getElementById('ccmFileClear');
+    if (inp) inp.value = '';
+    if (nm)  nm.textContent = 'No file chosen';
+    if (cl)  cl.style.display = 'none';
+};
+
+/* Confirm submit */
+(function () {
+    var btn      = document.getElementById('ccmConfirmBtn');
+    var claimUrl = 'claim_item.php';
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        var cName     = document.getElementById('ccmClaimantName');
+        var ubMail    = document.getElementById('ccmUbMail');
+        var ubError   = document.getElementById('ccmUbMailError');
+        var fileError = document.getElementById('ccmFileError');
+        var valid = true;
+
+        if (!cName || !cName.value.trim()) {
+            if (cName) cName.focus();
+            valid = false;
+        }
+
+        /* UB Mail: optional but if filled must end with @ub.edu.ph */
+        var mailVal = (ubMail ? ubMail.value.trim() : '');
+        if (mailVal && !/^[^@]+@ub\.edu\.ph$/i.test(mailVal)) {
+            if (ubError) { ubError.style.display = 'block'; }
+            if (ubMail)  { ubMail.style.borderColor = '#dc2626'; ubMail.focus(); }
+            valid = false;
+        } else {
+            if (ubError) ubError.style.display = 'none';
+            if (ubMail)  ubMail.style.borderColor = '';
+        }
+
+        /* Image is required */
+        if (!window._ccmImg) {
+            if (fileError) fileError.style.display = 'block';
+            valid = false;
+        } else {
+            if (fileError) fileError.style.display = 'none';
+        }
+
+        if (!valid) return;
+
+        var row = window._ccmRow;
+        if (!row) return;
+        var id = row.getAttribute('data-id') || '';
+        if (!id) return;
+
+        btn.disabled = true; btn.textContent = 'Saving…';
+        fetch(claimUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id:                id,
+                claimant_name:     cName.value.trim(),
+                ub_mail:           mailVal,
+                contact_number:    (document.getElementById('ccmContactNumber')     || {}).value || '',
+                date_accomplished: (document.getElementById('ccmDateAccomplishment')|| {}).value || '',
+                imageDataUrl:      window._ccmImg || null
+            })
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            btn.disabled = false; btn.textContent = 'Confirm';
+            if (data.ok) {
+                closeConfirmClaimModal();
+                var tbody    = row.parentNode;
+                var colCount = row.querySelectorAll('td').length;
+                row.remove();
+                if (tbody && !tbody.querySelector('tr:not([style*="display: none"])')) {
+                    var empty = document.createElement('tr');
+                    empty.innerHTML = '<td colspan="' + colCount + '" class="table-empty">No items.</td>';
+                    tbody.appendChild(empty);
+                }
+            } else {
+                alert(data.error || 'Could not claim item. Try again.');
+            }
+        })
+        .catch(function () {
+            btn.disabled = false; btn.textContent = 'Confirm';
+            alert('Network error. Please try again.');
+        });
+    });
+})();
+
+/* ── All Items Claim button → open Confirm modal ─────────────── */
+(function () {
+    var tbl = document.getElementById('matchedReportsTable');
+    if (!tbl) return;
+    tbl.addEventListener('click', function (e) {
+        var btn = e.target.closest('.found-btn-claim');
+        if (!btn || btn.disabled || btn.classList.contains('btn-claim-expired')) return;
+        e.preventDefault();
+        var row = btn.closest('tr');
+        if (row && !row.querySelector('td[colspan]')) openConfirmClaimModal(row);
+    });
+})();
+
+
+/* ── Expiry popup ──────────────────────────────────────────── */
+(function () {
+    var overlay     = document.getElementById('expiryOverlay');
+    var closeBtn    = document.getElementById('expiryPopupClose');
+    var triggerLink = document.getElementById('expiryTriggerLink');
+    if (!overlay) return;
+    function openExpiry()  { overlay.classList.add('open'); }
+    function closeExpiry() { overlay.classList.remove('open'); }
+    if (triggerLink) triggerLink.addEventListener('click', function (e) { e.preventDefault(); openExpiry(); });
+    if (closeBtn)    closeBtn.addEventListener('click', closeExpiry);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeExpiry(); });
+})();
+
+/* Keyboard close */
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeConfirmClaimModal(); closeGuestDetailsModal(); }
+});
 </script>
+
 <script src="NotificationsDropdown.js"></script>
 </body>
 </html>

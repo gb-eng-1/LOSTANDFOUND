@@ -99,9 +99,49 @@ $studentName  = $_SESSION['student_name']  ?? '';
       overflow-y: auto;
       overflow-x: hidden;
     }
-    .notif-page-title {
-      font-size: 26px; font-weight: 700; color: #111; margin-bottom: 20px;
+    .notif-page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
+    .notif-page-title {
+      font-size: 26px; font-weight: 700; color: #111; margin: 0;
+    }
+    .notif-mark-all-btn {
+      padding: 8px 18px;
+      background: #8b0000;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: Poppins, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .notif-mark-all-btn:hover { opacity: 0.88; }
+    .notif-mark-all-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .notif-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #111827;
+      color: #fff;
+      font-family: Poppins, sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 22px;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      transition: transform 0.25s ease;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .notif-toast.show { transform: translateX(-50%) translateY(0); }
 
     /* ── Notification card list ── */
     .notif-card-list {
@@ -237,7 +277,12 @@ $studentName  = $_SESSION['student_name']  ?? '';
 
     <!-- Page content -->
     <div class="notif-page-wrap">
-      <h1 class="notif-page-title">Notifications</h1>
+      <div class="notif-page-header">
+        <h1 class="notif-page-title">Notifications</h1>
+        <button type="button" class="notif-mark-all-btn" id="markAllBtn">
+          <i class="fa-solid fa-check-double" style="margin-right:6px;"></i>Mark All as Read
+        </button>
+      </div>
       <div id="notifCardList" class="notif-card-list">
         <div class="notif-loading">
           <i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Loading…
@@ -426,19 +471,36 @@ $studentName  = $_SESSION['student_name']  ?? '';
 })();
 </script>
 
+<!-- Toast -->
+<div class="notif-toast" id="notifToast"></div>
+
 <!-- ── Load all notifications ─────────────────────────────────────────── -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  var list = document.getElementById('notifCardList');
+(function() {
+  var list       = document.getElementById('notifCardList');
+  var markAllBtn = document.getElementById('markAllBtn');
+  var toast      = document.getElementById('notifToast');
+  var _allNotifs = [];
 
   function fmtDate(str) {
     if (!str) return '';
     var d = new Date(str), now = new Date();
-    var days = Math.floor((now - d) / 86400000);
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7)   return days + ' days ago';
+    var diffDays = Math.floor((now - d) / 86400000);
+    if (diffDays === 0) {
+      var diffMin = Math.floor((now - d) / 60000);
+      if (diffMin < 1)  return 'Just now';
+      if (diffMin < 60) return diffMin + 'm ago';
+      return Math.floor(diffMin / 60) + 'h ago';
+    }
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7)   return diffDays + ' days ago';
     return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(function() { toast.classList.remove('show'); }, 2500);
   }
 
   function render(notifs) {
@@ -473,28 +535,66 @@ document.addEventListener('DOMContentLoaded', function() {
       list.appendChild(card);
     });
 
-    /* Mark unread notifications as read after 2 s */
+    /* Auto-mark unread as read after 2 s */
     setTimeout(function() {
       list.querySelectorAll('.notif-card.is-new').forEach(function(card) {
         var id = card.dataset.id;
         if (!id) return;
-        fetch('/LOSTANDFOUND/api/notifications/' + id + '/read', { method: 'PUT' })
+        fetch('/LOSTANDFOUND/api/notifications/' + id + '/read', { method: 'PUT', credentials: 'include' })
           .then(function(r) { return r.json(); })
-          .then(function(j) { if (j.ok) card.classList.remove('is-new'); });
+          .then(function(j) {
+            if (j.ok) {
+              card.classList.remove('is-new');
+              var pill = card.querySelector('.notif-new-pill');
+              if (pill) pill.remove();
+            }
+          });
       });
+      /* Clear bell badge */
+      var badge = document.getElementById('notifBadge') || (document.getElementById('notifTrigger') || {}).querySelector && document.getElementById('notifTrigger').querySelector('.notif-badge');
+      if (badge) badge.remove();
     }, 2000);
   }
 
-  fetch('/LOSTANDFOUND/api/notifications')
-    .then(function(r) { return r.json(); })
-    .then(function(j) {
-      if (j.ok) render(j.data);
-      else list.innerHTML = '<div class="notif-empty"><i class="fa-regular fa-bell-slash"></i>Could not load notifications.</div>';
-    })
-    .catch(function() {
-      list.innerHTML = '<div class="notif-empty"><i class="fa-regular fa-bell-slash"></i>Could not load notifications.</div>';
+  /* ── Mark All as Read ── */
+  if (markAllBtn) {
+    markAllBtn.addEventListener('click', function() {
+      var unread = _allNotifs.filter(function(n) { return !n.is_read; });
+      if (!unread.length) { showToast('All notifications are already read.'); return; }
+      markAllBtn.disabled = true;
+      var done = 0;
+      unread.forEach(function(n) {
+        fetch('/LOSTANDFOUND/api/notifications/' + n.id + '/read', { method: 'PUT', credentials: 'include' })
+          .then(function(r) { return r.json(); })
+          .then(function(j) {
+            if (j.ok) n.is_read = true;
+            done++;
+            if (done === unread.length) {
+              render(_allNotifs);
+              markAllBtn.disabled = false;
+              var badge = document.getElementById('notifTrigger') && document.getElementById('notifTrigger').querySelector('.notif-badge');
+              if (badge) badge.remove();
+              showToast('All notifications marked as read.');
+            }
+          })
+          .catch(function() { done++; if (done === unread.length) markAllBtn.disabled = false; });
+      });
     });
-});
+  }
+
+  /* ── Fetch & init ── */
+  document.addEventListener('DOMContentLoaded', function() {
+    fetch('/LOSTANDFOUND/api/notifications', { credentials: 'include' })
+      .then(function(r) { return r.json(); })
+      .then(function(j) {
+        if (j.ok) { _allNotifs = j.data || []; render(_allNotifs); }
+        else list.innerHTML = '<div class="notif-empty"><i class="fa-regular fa-bell-slash"></i>Could not load notifications.</div>';
+      })
+      .catch(function() {
+        list.innerHTML = '<div class="notif-empty"><i class="fa-regular fa-bell-slash"></i>Could not load notifications.</div>';
+      });
+  });
+})();
 </script>
 
 </body>

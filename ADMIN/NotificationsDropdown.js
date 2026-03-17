@@ -1,23 +1,28 @@
-// Admin Notifications Dropdown - live, polling /api/notifications
+// Admin Notifications Dropdown
+// Handles: toggle open/close, live fetch of notifications, mark-as-read, badge polling.
+// Structure mirrors the student-side dropdown; admin-specific link mapping is handled in PHP.
 (function () {
-  const trigger = document.getElementById('notifTrigger');
-  const panel   = document.getElementById('notifPanel');
-  const wrapper = document.getElementById('notifDropdown');
-  const list    = panel ? panel.querySelector('.notif-list') : null;
-  const panelCount = panel ? panel.querySelector('.notif-panel-count') : null;
+  var trigger  = document.getElementById('notifTrigger');
+  var panel    = document.getElementById('notifPanel');
+  var wrapper  = document.getElementById('notifDropdown');
+  var list     = panel  ? panel.querySelector('.notif-list')        : null;
+  var countEl  = panel  ? panel.querySelector('.notif-panel-count') : null;
 
   if (!trigger || !panel || !list) return;
 
-  let lastUnreadCount = -1;
+  var lastUnreadCount = -1;
 
-  function mapAdminLink(n) {
-    const t = (n.type || '').toLowerCase();
-    if (t.includes('lost') || t.includes('report')) return 'AdminReports.php';
-    if (t.includes('match')) return 'ItemMatchedAdmin.php';
-    if (t.includes('claim')) return 'HistoryAdmin.php';
+  /* ── Admin link mapping (mirrors PHP switch in notifications_dropdown.php) ── */
+  function mapAdminLink(type) {
+    type = (type || '').toLowerCase();
+    if (type === 'lost_report_created' || type === 'report_updated')      return 'AdminReports.php';
+    if (type === 'match_found' || type.startsWith('match_'))              return 'ItemMatchedAdmin.php';
+    if (type === 'claim_submitted' || type.startsWith('claim_'))          return 'HistoryAdmin.php';
+    if (type === 'disposal_warning' || type === 'expiry_warning')         return 'FoundAdmin.php';
     return 'AdminDashboard.php';
   }
 
+  /* ── Render notifications into the panel list ── */
   function renderNotifications(notifications) {
     list.innerHTML = '';
     if (!notifications || notifications.length === 0) {
@@ -25,57 +30,58 @@
       return;
     }
 
-    notifications.forEach(n => {
-      const isNew = !n.is_read;
-      const time = new Date(n.created_at);
-      const now = new Date();
-      const diff = Math.floor((now - time) / 1000);
-      let timeAgo = '';
-      if (diff < 60) timeAgo = 'Just now';
-      else if (diff < 3600) timeAgo = Math.floor(diff / 60) + 'm ago';
+    notifications.forEach(function (n) {
+      var isNew = !n.is_read;
+      var now   = new Date();
+      var d     = new Date(n.created_at);
+      var diff  = Math.floor((now - d) / 1000);
+      var timeAgo;
+      if      (diff < 60)    timeAgo = 'Just now';
+      else if (diff < 3600)  timeAgo = Math.floor(diff / 60)   + 'm ago';
       else if (diff < 86400) timeAgo = Math.floor(diff / 3600) + 'h ago';
-      else timeAgo = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      else                   timeAgo = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-      const link = mapAdminLink(n);
-      const itemHtml = `
-        <div class="notif-item ${isNew ? 'notif-item-new' : ''}" data-id="${n.id}">
-          <div class="notif-item-thumb">
-            <img src="images/notif_placeholder.jpg"
-                 alt="Item"
-                 class="notif-thumb-img"
-                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-            <div class="notif-thumb-placeholder" style="display:none;"><i class="fa-solid fa-box-open"></i></div>
-          </div>
-          <div class="notif-item-body">
-            <div class="notif-item-top">
-              <span class="notif-item-title">${n.title || ''}</span>
-              ${isNew ? '<span class="notif-item-new-badge">New</span>' : ''}
-              <span class="notif-item-time">${timeAgo}</span>
-            </div>
-            <div class="notif-item-message">
-              ${n.message || ''}
-              <a href="${link}" class="notif-view-link">View Details</a>
-            </div>
-          </div>
-        </div>
-      `;
-      list.insertAdjacentHTML('beforeend', itemHtml);
+      var link = mapAdminLink(n.type);
+      list.insertAdjacentHTML('beforeend',
+        '<div class="notif-item' + (isNew ? ' notif-item-new' : '') + '" data-id="' + n.id + '">'
+        + '<div class="notif-item-thumb">'
+        +   '<img src="images/notif_placeholder.jpg" alt="Item" class="notif-thumb-img"'
+        +        ' onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">'
+        +   '<div class="notif-thumb-placeholder" style="display:none;"><i class="fa-solid fa-box-open"></i></div>'
+        + '</div>'
+        + '<div class="notif-item-body">'
+        +   '<div class="notif-item-top">'
+        +     '<span class="notif-item-title">' + escHtml(n.title || '') + '</span>'
+        +     (isNew ? '<span class="notif-item-new-badge">New</span>' : '')
+        +     '<span class="notif-item-time">' + timeAgo + '</span>'
+        +   '</div>'
+        +   '<div class="notif-item-message">'
+        +     escHtml(n.message || '')
+        +     ' <a href="' + link + '" class="notif-view-link">View Details</a>'
+        +   '</div>'
+        + '</div>'
+        + '</div>'
+      );
     });
   }
 
-  function fetchNotifications() {
-    fetch('/LOSTANDFOUND/api/notifications')
-      .then(res => res.json())
-      .then(json => {
-        if (json.ok) {
-          renderNotifications(json.data);
-        }
-      })
-      .catch(err => console.error('Failed to fetch notifications', err));
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c];
+    });
   }
 
-  function updateUnreadCount(count) {
-    let badge = trigger.querySelector('.notif-badge');
+  /* ── Fetch latest notifications from API ── */
+  function fetchNotifications() {
+    fetch('/LOSTANDFOUND/api/notifications', { credentials: 'include' })
+      .then(function (r) { return r.json(); })
+      .then(function (json) { if (json.ok) renderNotifications(json.data); })
+      .catch(function () {});
+  }
+
+  /* ── Update badge number ── */
+  function updateBadge(count) {
+    var badge = trigger.querySelector('.notif-badge');
     if (count > 0) {
       if (!badge) {
         badge = document.createElement('span');
@@ -83,54 +89,58 @@
         trigger.appendChild(badge);
       }
       badge.textContent = String(count);
-      if (panelCount) panelCount.textContent = `${count} new`;
+      if (countEl) countEl.textContent = count + ' new';
     } else {
       if (badge) badge.remove();
-      if (panelCount) panelCount.textContent = '';
+      if (countEl) countEl.textContent = '';
     }
   }
 
-  function pollForUnreadCount() {
-    fetch('/LOSTANDFOUND/api/notifications/count')
-      .then(res => res.json())
-      .then(json => {
-        if (json.ok) {
-          const count = json.data.unread_count;
+  /* ── Poll unread count every 15 s ── */
+  function pollCount() {
+    fetch('/LOSTANDFOUND/api/notifications/count', { credentials: 'include' })
+      .then(function (r) { return r.json(); })
+      .then(function (json) {
+        if (json.ok && json.data) {
+          var count = json.data.unread_count || 0;
           if (count !== lastUnreadCount) {
-            updateUnreadCount(count);
+            updateBadge(count);
             lastUnreadCount = count;
           }
         }
       })
-      .catch(err => console.error('Failed to poll notification count', err));
+      .catch(function () {});
   }
 
-  function markNotificationsAsRead() {
-    const unreadItems = list.querySelectorAll('.notif-item-new');
-    unreadItems.forEach(item => {
-      const notifId = item.getAttribute('data-id');
-      if (!notifId) return;
-      fetch(`/LOSTANDFOUND/api/notifications/${notifId}/read`, { method: 'PUT' })
-        .then(res => res.json())
-        .then(json => {
+  /* ── Mark visible unread items as read ── */
+  function markVisibleAsRead() {
+    list.querySelectorAll('.notif-item-new').forEach(function (item) {
+      var id = item.getAttribute('data-id');
+      if (!id) return;
+      fetch('/LOSTANDFOUND/api/notifications/' + id + '/read', {
+        method: 'PUT', credentials: 'include'
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (json) {
           if (json.ok) {
             item.classList.remove('notif-item-new');
-            const badge = item.querySelector('.notif-item-new-badge');
+            var badge = item.querySelector('.notif-item-new-badge');
             if (badge) badge.remove();
           }
         })
-        .catch(() => {});
+        .catch(function () {});
     });
-    updateUnreadCount(0);
+    updateBadge(0);
+    lastUnreadCount = 0;
   }
 
-  function open() {
+  /* ── Open / close ── */
+  function openPanel() {
     panel.classList.add('open');
     trigger.setAttribute('aria-expanded', 'true');
     panel.setAttribute('aria-hidden', 'false');
   }
-
-  function close() {
+  function closePanel() {
     panel.classList.remove('open');
     trigger.setAttribute('aria-expanded', 'false');
     panel.setAttribute('aria-hidden', 'true');
@@ -138,25 +148,25 @@
 
   trigger.addEventListener('click', function (e) {
     e.stopPropagation();
-    const isOpen = panel.classList.contains('open');
+    var isOpen = panel.classList.contains('open');
     if (!isOpen) {
-      open();
+      openPanel();
       fetchNotifications();
-      setTimeout(markNotificationsAsRead, 2000);
+      setTimeout(markVisibleAsRead, 2000);
     } else {
-      close();
+      closePanel();
     }
   });
 
   document.addEventListener('click', function (e) {
-    if (wrapper && !wrapper.contains(e.target)) close();
+    if (wrapper && !wrapper.contains(e.target)) closePanel();
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') closePanel();
   });
 
-  // Initial poll + interval for live badge updates
-  pollForUnreadCount();
-  setInterval(pollForUnreadCount, 15000);
+  /* ── Init ── */
+  pollCount();
+  setInterval(pollCount, 15000);
 })();

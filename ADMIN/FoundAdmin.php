@@ -46,6 +46,7 @@ foreach ($guestItems as $it) {
         $expiringItems[] = array_merge($it, ['_retEnd' => $retEnd, '_source' => 'guest']);
     }
 }
+$adminName = $_SESSION['admin_name'] ?? 'Admin';
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
 $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
 $basePath = rtrim(dirname(dirname($_SERVER['PHP_SELF'])), '/\\');
@@ -62,6 +63,7 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
     <title>UB Lost and Found System - Found Items</title>
     <link rel="stylesheet" href="AdminDashboard.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="FoundAdmin.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="../assets/photo-picker.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="NotificationsDropdown.css?v=<?php echo time(); ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -117,10 +119,10 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
   transition: background 0.15s, color 0.15s;
 }
 .found-tab-text.found-tab-active {
-  background: #fff;
-  color: #111827;
+  background: #8b0000;
+  color: #fff;
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 4px rgba(139,0,0,0.25);
 }
 
 /* Category filter — inline beside tabs */
@@ -553,7 +555,7 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                 <div class="admin-dropdown" id="adminDropdown">
                     <button type="button" class="admin-link admin-dropdown-trigger topbar-admin-trigger" aria-expanded="false" aria-haspopup="true" aria-label="Admin menu">
                         <i class="fa-regular fa-user"></i>
-                        <span class="admin-name">Admin</span>
+                        <span class="admin-name"><?php echo htmlspecialchars($adminName); ?></span>
                         <i class="fa-solid fa-chevron-down" style="font-size: 11px;"></i>
                     </button>
                     <div class="admin-dropdown-menu" role="menu">
@@ -575,8 +577,8 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
             <!-- Single row: tabs + category filter + guest date filter + action buttons (right-aligned) -->
             <div class="found-tabs-actions-row">
                 <div class="found-tabs">
-                    <span class="found-tab-text found-tab-active" id="allItemsTab">All Items</span>
-                    <span class="found-tab-text" id="guestItemsTab">Guest Items</span>
+                    <span class="found-tab-text found-tab-active" id="allItemsTab"><i class="fa-solid fa-list" style="margin-right:5px;font-size:12px;"></i>All Items</span>
+                    <span class="found-tab-text" id="guestItemsTab"><i class="fa-solid fa-user-group" style="margin-right:5px;font-size:12px;"></i>Guest Items</span>
                 </div>
                 <select class="found-filter-select" id="foundCategoryFilter" aria-label="Filter by category">
                     <option value="">All Categories</option>
@@ -893,7 +895,21 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
             <div class="report-form-row">
                 <label class="report-form-label" for="encodeColor">Color: <span class="report-required">*</span></label>
                 <div class="report-form-field">
-                    <input type="text" id="encodeColor" name="color" class="report-input" required placeholder="e.g. Blue, White">
+                    <select id="encodeColor" name="color" class="report-input report-select" required>
+                        <option value="">Select</option>
+                        <option>Red</option>
+                        <option>Orange</option>
+                        <option>Yellow</option>
+                        <option>Green</option>
+                        <option>Blue</option>
+                        <option>Violet</option>
+                        <option>Black</option>
+                        <option>White</option>
+                        <option>Brown</option>
+                        <option>Rainbow</option>
+                        <option>Multi</option>
+                        <option>Other</option>
+                    </select>
                 </div>
             </div>
             <div class="report-form-row">
@@ -915,25 +931,32 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                     <span class="report-date-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
                 </div>
             </div>
-            <!-- Photo indicator — shown after image captured/uploaded, hidden initially -->
-            <div class="report-form-row" id="encodeIdPhotoRow" style="display:none;">
-                <label class="report-form-label">Photo:</label>
-                <div class="report-form-field" style="display:flex;align-items:center;gap:8px;">
-                    <i class="fa-solid fa-circle-check" style="color:#16a34a;font-size:15px;"></i>
-                    <span id="encodeIdPhotoLabel" style="font-size:13px;color:#374151;font-weight:500;">Photo ready</span>
-                    <button type="button" id="encodeIdPhotoRemove" title="Remove photo"
-                            style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px;padding:0 4px;">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
+            <!-- Inline photo field -->
+            <div class="pp-photo-row" id="encodeIdPhotoRow">
+                <label class="pp-photo-label">Photo</label>
+                <div class="pp-wrap" id="encodeIdPhotoPicker">
+                    <div class="pp-idle">
+                        <i class="fa-regular fa-image pp-icon"></i>
+                        <p class="pp-hint">No photo yet</p>
+                        <div class="pp-btn-row">
+                            <button type="button" class="pp-btn pp-btn--cam" data-pp="camera"><i class="fa-solid fa-camera"></i> Camera</button>
+                            <button type="button" class="pp-btn pp-btn--upload" data-pp="upload"><i class="fa-solid fa-upload"></i> Upload</button>
+                        </div>
+                    </div>
+                    <div class="pp-preview" style="display:none">
+                        <img class="pp-preview-img" src="" alt="Photo preview">
+                        <div class="pp-preview-actions">
+                            <button type="button" class="pp-btn pp-btn--sm" data-pp="camera"><i class="fa-solid fa-camera"></i> Retake</button>
+                            <button type="button" class="pp-btn pp-btn--sm" data-pp="upload"><i class="fa-solid fa-upload"></i> Change</button>
+                            <button type="button" class="pp-btn pp-btn--del" data-pp="remove"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                    <input type="file" class="pp-file" accept="image/*" style="display:none">
                 </div>
             </div>
             <div class="report-modal-footer">
                 <button type="button" class="report-btn-cancel encode-id-cancel" id="encodeIdCancel">Cancel</button>
-                <!-- Next: validate → open scan modal -->
                 <button type="button" class="report-btn-confirm" id="encodeIdNext">Next</button>
-                <!-- Confirm: shown after photo acquired, replaces Next -->
-                <button type="button" class="report-btn-confirm" id="encodeIdDirectConfirm"
-                        style="display:none;background:#16a34a;">Confirm</button>
             </div>
         </form>
     </div>
@@ -1044,7 +1067,21 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
             <div class="report-form-row">
                 <label class="report-form-label" for="confirmColor">Color:</label>
                 <div class="report-form-field">
-                    <input type="text" id="confirmColor" name="color" class="report-input" required>
+                    <select id="confirmColor" name="color" class="report-input report-select" required>
+                        <option value="">Select</option>
+                        <option>Red</option>
+                        <option>Orange</option>
+                        <option>Yellow</option>
+                        <option>Green</option>
+                        <option>Blue</option>
+                        <option>Violet</option>
+                        <option>Black</option>
+                        <option>White</option>
+                        <option>Brown</option>
+                        <option>Rainbow</option>
+                        <option>Multi</option>
+                        <option>Other</option>
+                    </select>
                     <span class="report-required">*</span>
                 </div>
             </div>
@@ -1119,6 +1156,22 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                     </select>
                 </div>
             </div>
+            <div class="report-form-row" id="encodeReportDocTypeRow" style="display:none">
+                <label class="report-form-label" for="encodeReportDocType">Document Type:</label>
+                <div class="report-form-field">
+                    <select id="encodeReportDocType" name="document_type" class="report-input report-select">
+                        <option value="">Select document type</option>
+                        <option>Student ID</option>
+                        <option>Driver's License</option>
+                        <option>Passport</option>
+                        <option>Person's With Disability (PWD) ID</option>
+                        <option>Voter's ID</option>
+                        <option>Company/Employee ID</option>
+                        <option>National ID</option>
+                        <option>Senior Citizen ID</option>
+                    </select>
+                </div>
+            </div>
             <div class="report-form-row">
                 <label class="report-form-label" for="encodeReportFullName">Full Name:</label>
                 <div class="report-form-field">
@@ -1161,19 +1214,21 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
             <div class="report-form-row">
                 <label class="report-form-label" for="encodeReportColor">Color:</label>
                 <div class="report-form-field">
-                    <select id="encodeReportColor" name="color" class="report-input report-select">
-                        <option value="">Select</option>
-                        <option value="Black">Black</option>
-                        <option value="White">White</option>
-                        <option value="Blue">Blue</option>
-                        <option value="Red">Red</option>
-                        <option value="Green">Green</option>
-                        <option value="Gray">Gray</option>
-                        <option value="Brown">Brown</option>
-                        <option value="Silver">Silver</option>
-                        <option value="Gold">Gold</option>
-                        <option value="Other">Other</option>
-                    </select>
+                        <select id="encodeReportColor" name="color" class="report-input report-select">
+                            <option value="">Select</option>
+                            <option>Red</option>
+                            <option>Orange</option>
+                            <option>Yellow</option>
+                            <option>Green</option>
+                            <option>Blue</option>
+                            <option>Violet</option>
+                            <option>Black</option>
+                            <option>White</option>
+                            <option>Brown</option>
+                            <option>Rainbow</option>
+                            <option>Multi</option>
+                            <option>Other</option>
+                        </select>
                 </div>
             </div>
             <div class="report-form-row">
@@ -1205,6 +1260,29 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                 <div class="report-form-field report-date-wrap">
                     <input type="date" id="encodeReportDateLost" name="date_lost" class="report-input report-date" title="Pick a date">
                     <span class="report-date-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
+                </div>
+            </div>
+            <!-- Inline photo field -->
+            <div class="pp-photo-row">
+                <label class="pp-photo-label">Photo</label>
+                <div class="pp-wrap" id="encodeReportPhotoPicker">
+                    <div class="pp-idle">
+                        <i class="fa-regular fa-image pp-icon"></i>
+                        <p class="pp-hint">No photo yet</p>
+                        <div class="pp-btn-row">
+                            <button type="button" class="pp-btn pp-btn--cam" data-pp="camera"><i class="fa-solid fa-camera"></i> Camera</button>
+                            <button type="button" class="pp-btn pp-btn--upload" data-pp="upload"><i class="fa-solid fa-upload"></i> Upload</button>
+                        </div>
+                    </div>
+                    <div class="pp-preview" style="display:none">
+                        <img class="pp-preview-img" src="" alt="Photo preview">
+                        <div class="pp-preview-actions">
+                            <button type="button" class="pp-btn pp-btn--sm" data-pp="camera"><i class="fa-solid fa-camera"></i> Retake</button>
+                            <button type="button" class="pp-btn pp-btn--sm" data-pp="upload"><i class="fa-solid fa-upload"></i> Change</button>
+                            <button type="button" class="pp-btn pp-btn--del" data-pp="remove"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                    <input type="file" class="pp-file" accept="image/*" style="display:none">
                 </div>
             </div>
             <div class="report-modal-footer">
@@ -1569,6 +1647,7 @@ var LOSTANDFOUND_SAVE_GUEST_URL = <?php echo json_encode($saveGuestItemUrl); ?>;
 var LOSTANDFOUND_SAVE_LOST_REPORT_URL = <?php echo json_encode($saveLostReportUrl); ?>;
 var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
 </script>
+<script src="../assets/photo-picker.js?v=<?php echo time(); ?>"></script>
 <script>
 (function () {
     var dropdown = document.getElementById('adminDropdown');
@@ -1644,10 +1723,6 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
 (function () {
     var encodeIdModal        = document.getElementById('encodeIdModal');
     var encodeIdNext         = document.getElementById('encodeIdNext');
-    var encodeIdDirectConfirm = document.getElementById('encodeIdDirectConfirm');
-    var encodeIdPhotoRow     = document.getElementById('encodeIdPhotoRow');
-    var encodeIdPhotoLabel   = document.getElementById('encodeIdPhotoLabel');
-    var encodeIdPhotoRemove  = document.getElementById('encodeIdPhotoRemove');
     var encodeIdScanModal    = document.getElementById('encodeIdScanModal');
     var encodeIdUploadModal  = document.getElementById('encodeIdUploadModal');
     if (!encodeIdModal) return;
@@ -1659,7 +1734,7 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
     /* ── Open / Close ─────────────────────────────────────────────────── */
     function openEncodeIdModal() {
         document.getElementById('encodeIdForm').reset();
-        resetPhotoState();
+        if (_encodeIdPP) _encodeIdPP.clear();
         encodeIdModal.classList.add('report-modal-open');
     }
     function closeEncodeIdModal() {
@@ -1676,28 +1751,13 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
         if (e.key === 'Escape' && encodeIdModal.classList.contains('report-modal-open')) closeEncodeIdModal();
     });
 
-    /* ── Photo state helpers ──────────────────────────────────────────── */
-    function resetPhotoState() {
-        window.__encodeIdImage = null;
-        if (encodeIdPhotoRow)    encodeIdPhotoRow.style.display    = 'none';
-        if (encodeIdNext)        encodeIdNext.style.display        = '';
-        if (encodeIdDirectConfirm) encodeIdDirectConfirm.style.display = 'none';
-    }
-
-    function setPhotoAcquired(dataUrl, label) {
-        window.__encodeIdImage = dataUrl;
-        if (encodeIdPhotoRow)    encodeIdPhotoRow.style.display    = 'flex';
-        if (encodeIdPhotoLabel)  encodeIdPhotoLabel.textContent    = label || 'Photo ready';
-        if (encodeIdNext)        encodeIdNext.style.display        = 'none';
-        if (encodeIdDirectConfirm) encodeIdDirectConfirm.style.display = '';
-    }
-    window.__setEncodeIdPhotoAcquired = setPhotoAcquired;
-
-    if (encodeIdPhotoRemove) {
-        encodeIdPhotoRemove.addEventListener('click', function () {
-            resetPhotoState();
-        });
-    }
+    /* ── Photo picker (shared PhotoPicker widget) ─────────────────────── */
+    window.__encodeIdImage = null;
+    var _encodeIdPP = PhotoPicker.init({
+        el: 'encodeIdPhotoPicker',
+        onChange: function (dataUrl) { window.__encodeIdImage = dataUrl || null; }
+    });
+    window.__setEncodeIdPhotoAcquired = function (dataUrl) { _encodeIdPP.setPhoto(dataUrl); };
 
     /* ── Success modal ────────────────────────────────────────────────── */
     var encodeIdSuccessModal    = document.getElementById('encodeIdSuccessModal');
@@ -1725,7 +1785,7 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
         });
     }
 
-    /* ── NEXT: validate → save form data → open scan modal ───────────── */
+    /* ── NEXT: validate → save form data → open confirm/review modal ─── */
     if (encodeIdNext) {
         encodeIdNext.addEventListener('click', function () {
             var fullname = document.getElementById('encodeFullname');
@@ -1741,31 +1801,10 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
                 encoded_by:       (document.getElementById('encodeEncodedBy')       || {}).value || '',
                 date_surrendered: (document.getElementById('encodeDateSurrendered') || {}).value || ''
             };
-            closeEncodeIdModal();
-            if (encodeIdScanModal) encodeIdScanModal.classList.add('scan-upload-open');
-        });
-    }
-
-    /* ── CONFIRM: submit to DB ────────────────────────────────────────── */
-    if (encodeIdDirectConfirm) {
-        encodeIdDirectConfirm.addEventListener('click', function () {
-            var data = window.__encodeIdFormData;
-            if (!data) return;
-            var fullname = document.getElementById('encodeFullname');
-            var color    = document.getElementById('encodeColor');
-            if (!fullname || !fullname.value.trim()) { fullname.focus(); return; }
-            if (!color    || !color.value.trim())    { color.focus();    return; }
-            var payload = {
-                barcode_id:       (document.getElementById('encodeBarcodeId')      || {}).value || data.barcode_id,
-                id_type:          (document.getElementById('encodeIdType')          || {}).value || data.id_type,
-                fullname:         fullname.value.trim(),
-                color:            color.value.trim(),
-                storage_location: (document.getElementById('encodeStorageLocation') || {}).value || data.storage_location,
-                encoded_by:       (document.getElementById('encodeEncodedBy')       || {}).value || data.encoded_by,
-                date_surrendered: (document.getElementById('encodeDateSurrendered') || {}).value || data.date_surrendered,
-                imageDataUrl:     window.__encodeIdImage || null
-            };
-            submitGuestItem(payload);
+            /* Open the review modal directly — photo is already inline in the form */
+            if (window.openEncodeIdConfirmModalFn) {
+                window.openEncodeIdConfirmModalFn(window.__encodeIdImage || null);
+            }
         });
     }
 
@@ -1773,7 +1812,7 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
     function submitGuestItem(payload) {
         var saveUrl = typeof LOSTANDFOUND_SAVE_GUEST_URL !== 'undefined'
             ? LOSTANDFOUND_SAVE_GUEST_URL : '../save_guest_item.php';
-        var activeBtn = window.__encodeIdImage ? encodeIdDirectConfirm : encodeIdNext;
+        var activeBtn = encodeIdNext;
         if (activeBtn) activeBtn.disabled = true;
 
         fetch(saveUrl, {
@@ -1786,7 +1825,7 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
                 if (!res.ok) { alert('Could not save: ' + (data.error || res.status)); return; }
                 closeEncodeIdModal();
                 document.getElementById('encodeIdForm').reset();
-                resetPhotoState();
+                if (_encodeIdPP) _encodeIdPP.clear();
                 if (encodeIdScanModal)   encodeIdScanModal.classList.remove('scan-upload-open');
                 if (encodeIdUploadModal) encodeIdUploadModal.classList.remove('upload-image-open');
 
@@ -1933,15 +1972,10 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
             var ctx = canvas.getContext('2d');
             ctx.drawImage(encodeIdCameraVideo, 0, 0);
             encodeIdImageDataUrl = canvas.toDataURL('image/jpeg');
-            encodeIdScanPreview.innerHTML = '<img src="' + encodeIdImageDataUrl + '" alt="Captured">';
-            encodeIdScanPreview.classList.add('has-image');
-            encodeIdScanPreview.style.display = 'flex';
             stopEncodeIdCamera();
             closeEncodeIdScanModal();
-            /* Return to the form with Confirm button */
-            if (window.__setEncodeIdPhotoAcquired) window.__setEncodeIdPhotoAcquired(encodeIdImageDataUrl, 'Camera photo ready');
-            var encodeIdModal = document.getElementById('encodeIdModal');
-            if (encodeIdModal) encodeIdModal.classList.add('report-modal-open');
+            /* Update inline photo preview in the form (form stays open) */
+            if (window.__setEncodeIdPhotoAcquired) window.__setEncodeIdPhotoAcquired(encodeIdImageDataUrl);
         });
     }
 
@@ -2012,14 +2046,24 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
                 encodeIdImageDataUrl = reader.result;
                 closeEncodeIdUploadModal();
                 closeEncodeIdScanModal();
-                /* Return to form with Confirm button */
-                if (window.__setEncodeIdPhotoAcquired) window.__setEncodeIdPhotoAcquired(encodeIdImageDataUrl, 'Uploaded photo ready');
-                var encodeIdModal = document.getElementById('encodeIdModal');
-                if (encodeIdModal) encodeIdModal.classList.add('report-modal-open');
+                /* Update inline photo preview in the form (form stays open) */
+                if (window.__setEncodeIdPhotoAcquired) window.__setEncodeIdPhotoAcquired(encodeIdImageDataUrl);
             };
             reader.readAsDataURL(stagedEncodeIdFile);
         });
     }
+
+    /* Expose modal open functions for inline photo buttons */
+    window.openEncodeIdScanModalFn = function () {
+        if (encodeIdScanModal) encodeIdScanModal.classList.add('scan-upload-open');
+    };
+    window.openEncodeIdUploadModalFn = function () {
+        if (encodeIdUploadStaged) encodeIdUploadStaged.style.display = 'none';
+        if (encodeIdUploadInput) encodeIdUploadInput.value = '';
+        stagedEncodeIdFile = null;
+        if (encodeIdUploadModal) encodeIdUploadModal.classList.add('upload-image-open');
+    };
+    window.openEncodeIdConfirmModalFn = openEncodeIdConfirmModal;
 
     function openEncodeIdConfirmModal(imageDataUrl) {
         var data = window.__encodeIdFormData;
@@ -2097,6 +2141,13 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
     var encodeReportCancel = document.getElementById('encodeReportCancel');
     var encodeReportNext = document.getElementById('encodeReportNext');
     if (!encodeReportModal) return;
+
+    window.__encodeReportImage = null;
+    var _encodeReportPP = PhotoPicker.init({
+        el: 'encodeReportPhotoPicker',
+        onChange: function (dataUrl) { window.__encodeReportImage = dataUrl || null; }
+    });
+    window.__setEncodeReportPhotoAcquired = function (dataUrl) { _encodeReportPP.setPhoto(dataUrl); };
 
     function closeEncodeReportModal() {
         encodeReportModal.classList.remove('report-modal-open');
@@ -2194,6 +2245,11 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
     }
 
     if (encodeReportBtn) encodeReportBtn.addEventListener('click', function () {
+        if (_encodeReportPP) _encodeReportPP.clear();
+        var form = document.getElementById('encodeReportForm');
+        if (form) form.reset();
+        var drRow = document.getElementById('encodeReportDocTypeRow');
+        if (drRow) drRow.style.display = 'none';
         encodeReportModal.classList.add('report-modal-open');
     });
     if (encodeReportClose) encodeReportClose.addEventListener('click', closeEncodeReportModal);
@@ -2206,6 +2262,32 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
     });
     if (encodeReportCancel) encodeReportCancel.addEventListener('click', closeEncodeReportModal);
 
+    /* Expose scan/upload modal open functions for inline photo buttons */
+    window.openEncodeReportScanModalFn = function () {
+        if (encodeReportScanModal) encodeReportScanModal.classList.add('scan-upload-open');
+    };
+    window.openEncodeReportUploadModalFn = function () {
+        if (encodeReportUploadModal) encodeReportUploadModal.classList.add('upload-image-open');
+    };
+
+    // Document & Identification sub-dropdown for Encode Report
+    (function () {
+        var catSel   = document.getElementById('encodeReportCategory');
+        var docRow   = document.getElementById('encodeReportDocTypeRow');
+        var docSel   = document.getElementById('encodeReportDocType');
+        var itemFld  = document.getElementById('encodeReportItem');
+        function syncEncodeReportDocType() {
+            if (!docRow) return;
+            var isDoc = catSel && catSel.value === 'Document & Identification';
+            docRow.style.display = isDoc ? '' : 'none';
+            if (!isDoc && docSel) docSel.value = '';
+        }
+        if (catSel) catSel.addEventListener('change', syncEncodeReportDocType);
+        if (docSel) docSel.addEventListener('change', function () {
+            if (itemFld) itemFld.value = this.value;
+        });
+    })();
+
     if (encodeReportNext) {
         encodeReportNext.addEventListener('click', function () {
             var contact = document.getElementById('encodeReportContactNumber');
@@ -2214,13 +2296,17 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
             if (!contact || !contact.value.trim()) { contact.focus(); return; }
             if (!department || !department.value.trim()) { department.focus(); return; }
             if (!description || !description.value.trim()) { description.focus(); return; }
+            var docType = (document.getElementById('encodeReportDocType') && document.getElementById('encodeReportDocType').value) || '';
+            var item    = (document.getElementById('encodeReportItem') && document.getElementById('encodeReportItem').value) || '';
+            if (docType && !item) item = docType;
             window.__encodeReportFormData = {
                 category: (document.getElementById('encodeReportCategory') && document.getElementById('encodeReportCategory').value) || '',
+                document_type: docType,
                 full_name: (document.getElementById('encodeReportFullName') && document.getElementById('encodeReportFullName').value) || '',
                 contact_number: (contact && contact.value) || '',
                 department: (department && department.value) || '',
                 id: (document.getElementById('encodeReportId') && document.getElementById('encodeReportId').value) || '',
-                item: (document.getElementById('encodeReportItem') && document.getElementById('encodeReportItem').value) || '',
+                item: item,
                 item_description: (description && description.value) || '',
                 color: (document.getElementById('encodeReportColor') && document.getElementById('encodeReportColor').value) || '',
                 brand: (document.getElementById('encodeReportBrand') && document.getElementById('encodeReportBrand').value) || '',
@@ -2228,8 +2314,10 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
                 storage_location: (document.getElementById('encodeReportStorageLocation') && document.getElementById('encodeReportStorageLocation').value) || '',
                 date_lost: (document.getElementById('encodeReportDateLost') && document.getElementById('encodeReportDateLost').value) || ''
             };
-            closeEncodeReportModal();
-            if (encodeReportScanModal) encodeReportScanModal.classList.add('scan-upload-open');
+            /* Open the confirm/review modal directly — photo is already inline in the form */
+            if (window.openEncodeReportConfirmModal) {
+                window.openEncodeReportConfirmModal(window.__encodeReportImage || null);
+            }
         });
     }
 
@@ -2299,12 +2387,10 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
                 var ctx = canvas.getContext('2d');
                 ctx.drawImage(cameraVideo, 0, 0);
                 var reportImageDataUrl = canvas.toDataURL('image/jpeg');
-                scanPreview.innerHTML = '<img src="' + reportImageDataUrl + '" alt="Captured">';
-                scanPreview.classList.add('has-image');
-                scanPreview.style.display = 'flex';
                 stopEncodeReportCamera();
                 closeEncodeReportScanModal();
-                if (window.openEncodeReportConfirmModal) window.openEncodeReportConfirmModal(reportImageDataUrl);
+                /* Update inline photo preview; form modal stays/re-opens */
+                if (window.__setEncodeReportPhotoAcquired) window.__setEncodeReportPhotoAcquired(reportImageDataUrl);
             });
         }
         if (uploadBtn) {
@@ -2361,7 +2447,8 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
                     var reportImageDataUrl = reader.result;
                     closeEncodeReportUploadModal();
                     closeEncodeReportScanModal();
-                    if (window.openEncodeReportConfirmModal) window.openEncodeReportConfirmModal(reportImageDataUrl);
+                    /* Update inline photo preview; form modal stays/re-opens */
+                    if (window.__setEncodeReportPhotoAcquired) window.__setEncodeReportPhotoAcquired(reportImageDataUrl);
                 };
                 reader.readAsDataURL(stagedFile);
             });
@@ -2952,6 +3039,7 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
   </div>
 </div>
 
+<script>
 /* ── Guest Item Details Modal ─────────────────────────────────────────────── */
 (function () {
     function esc(s) {
@@ -3033,6 +3121,7 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
         });
     }
 })();
+</script>
 
 <script src="NotificationsDropdown.js"></script>
 </body>

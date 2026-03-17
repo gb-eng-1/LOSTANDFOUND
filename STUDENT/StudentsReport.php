@@ -219,6 +219,7 @@ $rlmCategories = [
   <!-- FA JS renderer: injects inline SVGs, bypasses CORS font-face issues -->
   <script defer src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/js/all.min.js"></script>
   <link rel="stylesheet" href="../ADMIN/AdminDashboard.css?v=<?php echo time(); ?>">
+  <link rel="stylesheet" href="../assets/photo-picker.css?v=<?php echo time(); ?>">
   <link rel="stylesheet" href="StudentsReport.css?v=<?php echo time(); ?>">
   <link rel="stylesheet" href="ItemDetailsModal.css?v=<?php echo time(); ?>">
   <link rel="stylesheet" href="NotificationsDropdown.css?v=<?php echo time(); ?>">
@@ -311,37 +312,58 @@ $rlmCategories = [
       margin-bottom: 18px;
     }
 
-    /* ── Tabs ── */
-    .report-tabs {
+    /* ── Tabs (pill style, matches admin pages) ── */
+    .report-tabs-row {
       display: flex;
+      align-items: center;
+      flex-wrap: wrap;
       gap: 10px;
       margin-bottom: 22px;
-      flex-wrap: wrap;
+    }
+    .report-tabs-pill {
+      display: flex;
+      align-items: center;
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 3px;
+      gap: 0;
+      flex-shrink: 0;
     }
     .report-tab {
-      padding: 8px 20px;
+      padding: 6px 16px;
       border-radius: 6px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       text-decoration: none;
-      color: #374151;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
+      color: #6b7280;
+      background: transparent;
+      border: none;
+      white-space: nowrap;
       transition: background 0.15s, color 0.15s;
+      cursor: pointer;
     }
-    .report-tab:hover { background: #e5e7eb; color: #111; text-decoration: none; }
+    .report-tab:hover { background: #e5e7eb; color: #374151; text-decoration: none; }
     .report-tab.active {
       background: #8b0000;
       color: #fff;
-      border-color: #8b0000;
-    }
-    .report-tab-primary {
-      background: #8b0000;
-      color: #fff !important;
-      border-color: #8b0000;
       font-weight: 600;
+      box-shadow: 0 1px 4px rgba(139,0,0,0.25);
     }
-    .report-tab-primary:hover { background: #6d0000; border-color: #6d0000; }
+    .report-tab-action {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 16px;
+      background: #8b0000;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s;
+    }
+    .report-tab-action:hover { background: #6d0000; color: #fff; text-decoration: none; }
 
     /* ── Section heading & help text ── */
     .section-title-my {
@@ -375,27 +397,26 @@ $rlmCategories = [
       background: #fff;
     }
     .reports-data-table thead tr {
-      background: #f9fafb;
+      background: #f3f4f6;
     }
     .reports-data-table th {
       padding: 12px 14px;
       text-align: left;
       font-weight: 600;
       color: #374151;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid #d1d5db;
       white-space: nowrap;
     }
     .reports-data-table th:last-child { text-align: center; }
     .reports-data-table td {
       padding: 12px 14px;
       color: #374151;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid #e5e7eb;
       white-space: nowrap;
     }
     .reports-data-table td.action-cell { text-align: center; white-space: nowrap; }
     .reports-data-table tbody tr:last-child td { border-bottom: none; }
-    .reports-data-table tbody tr.row-even { background: #fff; }
-    .reports-data-table tbody tr.row-odd  { background: #fafafa; }
+    .reports-data-table tbody tr:nth-child(even) td { background: #f9fafb; }
     .reports-data-table tbody tr:hover td { background: #f3f4f6 !important; }
     .table-empty {
       text-align: center;
@@ -428,7 +449,7 @@ $rlmCategories = [
     .btn-view {
       display: inline-block;
       padding: 6px 18px;
-      background: #007bff;
+      background: #8b0000;
       color: #fff;
       border: none;
       border-radius: 6px;
@@ -439,7 +460,7 @@ $rlmCategories = [
       text-decoration: none;
       transition: background 0.15s;
     }
-    .btn-view:hover { background: #0069d9; color: #fff; }
+    .btn-view:hover { background: #6d0000; color: #fff; }
 
     .btn-cancel {
       display: inline-block;
@@ -663,10 +684,12 @@ $rlmCategories = [
         </div>
       <?php endif; ?>
 
-      <div class="report-tabs">
-        <a href="StudentsReport.php?filter=all" class="report-tab <?php echo $filter === 'all' ? 'active' : ''; ?>">All Reports</a>
-        <a href="StudentsReport.php?filter=matched" class="report-tab <?php echo $filter === 'matched' ? 'active' : ''; ?>">Matched Reports</a>
-        <a href="#" class="report-tab report-tab-primary" data-open-report-lost>Report Lost Item</a>
+      <div class="report-tabs-row">
+        <div class="report-tabs-pill">
+          <a href="StudentsReport.php?filter=all" class="report-tab <?php echo $filter === 'all' ? 'active' : ''; ?>">All Reports</a>
+          <a href="StudentsReport.php?filter=matched" class="report-tab <?php echo $filter === 'matched' ? 'active' : ''; ?>">Matched Reports</a>
+        </div>
+        <a href="#" class="report-tab-action" data-open-report-lost>Report Lost Item</a>
       </div>
 
       <h2 class="section-title-my"><?php echo $filter === 'matched' ? 'Matched Reports' : 'My Reports'; ?></h2>
@@ -956,6 +979,23 @@ $rlmCategories = [
           </select>
         </div>
       </div>
+      <!-- Document Type (shown only when Document & Identification is selected) -->
+      <div class="rlm-row" id="rlmDocTypeRow" style="display:none">
+        <label class="rlm-label" for="rlmDocType">Document Type:</label>
+        <div class="rlm-field">
+          <select id="rlmDocType" class="rlm-select">
+            <option value="">Select document type</option>
+            <option>Student ID</option>
+            <option>Driver's License</option>
+            <option>Passport</option>
+            <option>Person's With Disability (PWD) ID</option>
+            <option>Voter's ID</option>
+            <option>Company/Employee ID</option>
+            <option>National ID</option>
+            <option>Senior Citizen ID</option>
+          </select>
+        </div>
+      </div>
       <!-- Full Name -->
       <div class="rlm-row">
         <label class="rlm-label" for="rlmFullName">Full Name:</label>
@@ -1000,11 +1040,25 @@ $rlmCategories = [
           <textarea id="rlmDescription" class="rlm-textarea" rows="3" required></textarea>
         </div>
       </div>
-      <!-- Color — text input (issue 1) -->
+      <!-- Color -->
       <div class="rlm-row">
         <label class="rlm-label" for="rlmColor">Color:</label>
         <div class="rlm-field">
-          <input type="text" id="rlmColor" class="rlm-input" placeholder="e.g. Sky Blue, Dark Green…">
+          <select id="rlmColor" class="rlm-select">
+            <option value="">Select</option>
+            <option>Red</option>
+            <option>Orange</option>
+            <option>Yellow</option>
+            <option>Green</option>
+            <option>Blue</option>
+            <option>Violet</option>
+            <option>Black</option>
+            <option>White</option>
+            <option>Brown</option>
+            <option>Rainbow</option>
+            <option>Multi</option>
+            <option>Other</option>
+          </select>
         </div>
       </div>
       <!-- Brand -->
@@ -1021,46 +1075,33 @@ $rlmCategories = [
           <input type="date" id="rlmDateLost" class="rlm-input">
         </div>
       </div>
-      <!-- Upload Image — trigger (issue 2) -->
-      <div class="rlm-row">
-        <label class="rlm-label">Upload Image:</label>
-        <div class="rlm-field">
-          <button type="button" class="rlm-upload-trigger" id="rlmUploadTrigger">
-            <span id="rlmUploadLabel">Choose file…</span>
-            <i class="fa-solid fa-xmark" id="rlmUploadClear" style="display:none;color:#9ca3af;font-size:14px;" title="Clear image"></i>
-          </button>
+      <!-- Inline photo picker -->
+      <div class="pp-photo-row">
+        <label class="pp-photo-label">Photo <span class="pp-optional">(optional)</span></label>
+        <div class="pp-wrap" id="rlmPhotoPicker">
+          <div class="pp-idle">
+            <i class="fa-regular fa-image pp-icon"></i>
+            <p class="pp-hint">No photo yet</p>
+            <div class="pp-btn-row">
+              <button type="button" class="pp-btn pp-btn--cam" data-pp="camera"><i class="fa-solid fa-camera"></i> Camera</button>
+              <button type="button" class="pp-btn pp-btn--upload" data-pp="upload"><i class="fa-solid fa-upload"></i> Upload</button>
+            </div>
+          </div>
+          <div class="pp-preview" style="display:none">
+            <img class="pp-preview-img" src="" alt="Photo preview">
+            <div class="pp-preview-actions">
+              <button type="button" class="pp-btn pp-btn--sm" data-pp="camera"><i class="fa-solid fa-camera"></i> Retake</button>
+              <button type="button" class="pp-btn pp-btn--sm" data-pp="upload"><i class="fa-solid fa-upload"></i> Change</button>
+              <button type="button" class="pp-btn pp-btn--del" data-pp="remove"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+          </div>
+          <input type="file" class="pp-file" accept="image/*" style="display:none">
         </div>
       </div>
     </div><!-- /.rlm-body -->
     <div class="rlm-footer">
       <button type="button" class="rlm-btn rlm-btn-cancel" id="rlmFormCancel">Cancel</button>
       <button type="button" class="rlm-btn rlm-btn-primary" id="rlmFormNext">Next</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ SCREEN 2 — Upload Image Sub-Modal ═════════════════════════════════════ -->
-<div id="rlmUploadOverlay" class="rlm-overlay" role="dialog" aria-modal="true" aria-label="Upload Image">
-  <div class="rlm-dialog rlm-upload-dialog">
-    <div class="rlm-header">
-      <h2>Upload Image</h2>
-      <button type="button" class="rlm-close-btn" id="rlmUploadClose" aria-label="Close">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-    <div class="rlm-body">
-      <!-- Drop zone -->
-      <div class="rlm-drop-zone" id="rlmDropZone">
-        <i class="fa-regular fa-image rlm-drop-icon"></i>
-        <p class="rlm-drop-text">Upload your file here.</p>
-        <input type="file" id="rlmFileInput" accept="image/*" style="display:none;">
-      </div>
-      <!-- File list -->
-      <div class="rlm-file-list" id="rlmFileList"></div>
-    </div>
-    <div class="rlm-footer">
-      <button type="button" class="rlm-btn rlm-btn-cancel" id="rlmUploadCancel">Cancel</button>
-      <button type="button" class="rlm-btn rlm-btn-primary" id="rlmUploadConfirm">Confirm</button>
     </div>
   </div>
 </div>
@@ -1086,17 +1127,19 @@ $rlmCategories = [
   </div>
 </div>
 
+<script src="../assets/photo-picker.js?v=<?php echo time(); ?>"></script>
 <script>
 (function () {
   'use strict';
 
   // ── References ────────────────────────────────────────────────────────────
   var formOverlay    = document.getElementById('rlmFormOverlay');
-  var uploadOverlay  = document.getElementById('rlmUploadOverlay');
   var successOverlay = document.getElementById('rlmSuccessOverlay');
 
   // form elements
   var fCategory    = document.getElementById('rlmCategory');
+  var fDocTypeRow  = document.getElementById('rlmDocTypeRow');
+  var fDocType     = document.getElementById('rlmDocType');
   var fFullName    = document.getElementById('rlmFullName');
   var fContact     = document.getElementById('rlmContact');
   var fDepartment  = document.getElementById('rlmDepartment');
@@ -1107,22 +1150,29 @@ $rlmCategories = [
   var fBrand       = document.getElementById('rlmBrand');
   var fDateLost    = document.getElementById('rlmDateLost');
 
-  var uploadTrigger = document.getElementById('rlmUploadTrigger');
-  var uploadLabel   = document.getElementById('rlmUploadLabel');
-  var uploadClear   = document.getElementById('rlmUploadClear');
-
-  // upload elements
-  var dropZone   = document.getElementById('rlmDropZone');
-  var fileInput  = document.getElementById('rlmFileInput');
-  var fileList   = document.getElementById('rlmFileList');
+  // Document & Identification sub-dropdown logic
+  function syncRlmDocType() {
+    if (!fDocTypeRow) return;
+    var isDoc = fCategory && fCategory.value === 'Document & Identification';
+    fDocTypeRow.style.display = isDoc ? '' : 'none';
+    if (!isDoc && fDocType) fDocType.value = '';
+  }
+  if (fCategory) fCategory.addEventListener('change', syncRlmDocType);
+  if (fDocType) {
+    fDocType.addEventListener('change', function () {
+      if (fItem) fItem.value = this.value;
+    });
+  }
 
   // success elements
   var successTicket = document.getElementById('rlmSuccessTicket');
 
-  // internal state
-  var selectedFile   = null;   // File object from input
-  var selectedDataUrl = null;  // base64 dataURL
-  var pendingFile    = null;   // staging while upload modal is open
+  // ── Photo picker ───────────────────────────────────────────────────────────
+  var selectedDataUrl = null;
+  var _rlmPP = PhotoPicker.init({
+    el: 'rlmPhotoPicker',
+    onChange: function (dataUrl) { selectedDataUrl = dataUrl || null; }
+  });
 
   // ── Open / close helpers ─────────────────────────────────────────────────
   function openForm() {
@@ -1130,16 +1180,6 @@ $rlmCategories = [
   }
   function closeForm() {
     formOverlay.classList.remove('rlm-open');
-  }
-  function openUpload() {
-    // Stage whatever is currently committed so user can cancel
-    pendingFile = selectedFile;
-    renderFileList(pendingFile);
-    uploadOverlay.classList.add('rlm-open');
-  }
-  function closeUpload() {
-    uploadOverlay.classList.remove('rlm-open');
-    pendingFile = null;
   }
   function openSuccess(ticketId) {
     successTicket.textContent = ticketId || '';
@@ -1150,13 +1190,14 @@ $rlmCategories = [
   }
   function closeAll() {
     closeForm();
-    closeUpload();
     closeSuccess();
     resetForm();
   }
 
   function resetForm() {
     if (fCategory)    fCategory.value    = '';
+    if (fDocTypeRow)  fDocTypeRow.style.display = 'none';
+    if (fDocType)     fDocType.value     = '';
     if (fContact)     fContact.value     = '';
     if (fDepartment)  fDepartment.value  = '';
     if (fItem)        fItem.value        = '';
@@ -1164,114 +1205,8 @@ $rlmCategories = [
     if (fColor)       fColor.value       = '';
     if (fBrand)       fBrand.value       = '';
     if (fDateLost)    fDateLost.value    = '';
-    selectedFile    = null;
-    selectedDataUrl = null;
-    updateUploadLabel();
+    _rlmPP.clear();
   }
-
-  // ── Upload label sync ─────────────────────────────────────────────────────
-  function updateUploadLabel() {
-    if (selectedFile) {
-      uploadLabel.textContent = selectedFile.name;
-      uploadTrigger.classList.add('has-file');
-      uploadClear.style.display = 'flex';
-    } else {
-      uploadLabel.textContent = 'Choose file…';
-      uploadTrigger.classList.remove('has-file');
-      uploadClear.style.display = 'none';
-    }
-  }
-
-  // ── Upload sub-modal file rendering ──────────────────────────────────────
-  function renderFileList(file) {
-    fileList.innerHTML = '';
-    if (!file) return;
-    var sizeMb = (file.size / (1024 * 1024)).toFixed(1) + 'mb';
-    var item = document.createElement('div');
-    item.className = 'rlm-file-item';
-
-    var thumbHtml = '<div class="rlm-file-thumb"><i class="fa-regular fa-image" style="font-size:18px;color:#9ca3af;"></i></div>';
-    if (file.type.startsWith('image/')) {
-      var reader = new FileReader();
-      reader.onload = function (e) {
-        var img = item.querySelector('.rlm-file-thumb img');
-        if (!img) {
-          var thumb = item.querySelector('.rlm-file-thumb');
-          if (thumb) thumb.innerHTML = '<img src="' + e.target.result + '" alt="">';
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-
-    item.innerHTML =
-      thumbHtml +
-      '<div class="rlm-file-info">' +
-        '<div class="rlm-file-name">' + escHtml(file.name) + '</div>' +
-        '<div class="rlm-file-size">' + sizeMb + '</div>' +
-      '</div>' +
-      '<button type="button" class="rlm-file-remove" title="Remove"><i class="fa-solid fa-circle-xmark"></i></button>';
-
-    item.querySelector('.rlm-file-remove').addEventListener('click', function () {
-      pendingFile = null;
-      fileList.innerHTML = '';
-    });
-    fileList.appendChild(item);
-  }
-
-  function escHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];
-    });
-  }
-
-  // ── Drop-zone interactions ────────────────────────────────────────────────
-  dropZone.addEventListener('click', function () { fileInput.click(); });
-  dropZone.addEventListener('dragover', function (e) { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', function () { dropZone.classList.remove('drag-over'); });
-  dropZone.addEventListener('drop', function (e) {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    var f = e.dataTransfer.files[0];
-    if (f && f.type.startsWith('image/')) { pendingFile = f; renderFileList(pendingFile); }
-  });
-  fileInput.addEventListener('change', function () {
-    var f = fileInput.files[0];
-    if (f) { pendingFile = f; renderFileList(pendingFile); }
-    fileInput.value = '';
-  });
-
-  // ── Trigger: open upload modal from form ──────────────────────────────────
-  uploadTrigger.addEventListener('click', function (e) {
-    // If clicking the clear × icon, clear file without opening modal
-    if (e.target.closest('#rlmUploadClear')) {
-      selectedFile    = null;
-      selectedDataUrl = null;
-      updateUploadLabel();
-      return;
-    }
-    openUpload();
-  });
-
-  // ── Upload modal buttons ──────────────────────────────────────────────────
-  document.getElementById('rlmUploadCancel').addEventListener('click', closeUpload);
-  document.getElementById('rlmUploadClose').addEventListener('click', closeUpload);
-
-  document.getElementById('rlmUploadConfirm').addEventListener('click', function () {
-    if (pendingFile) {
-      selectedFile = pendingFile;
-      // Read as dataURL for submission
-      var reader = new FileReader();
-      reader.onload = function (e) { selectedDataUrl = e.target.result; };
-      reader.readAsDataURL(pendingFile);
-      updateUploadLabel();
-    } else {
-      // No file chosen — clear any previous
-      selectedFile    = null;
-      selectedDataUrl = null;
-      updateUploadLabel();
-    }
-    closeUpload();
-  });
 
   // ── Form submit (Next button) ─────────────────────────────────────────────
   document.getElementById('rlmFormNext').addEventListener('click', function () {
@@ -1292,7 +1227,9 @@ $rlmCategories = [
     // Assemble item_description text block (matches ItemDetailsModal.js parser)
     var fullName   = fFullName    ? fFullName.value.trim()    : '';
     var idNum      = fIdNum       ? fIdNum.value.trim()       : '';
+    var docType    = fDocType     ? fDocType.value            : '';
     var item       = fItem        ? fItem.value.trim()        : '';
+    if (docType && !item) item = docType;
     var descParts  = [];
     if (fullName)  descParts.push('Full Name: ' + fullName);
     if (idNum)     descParts.push('Student Number: ' + idNum);
@@ -1352,8 +1289,7 @@ $rlmCategories = [
   });
 
   // ── Backdrop click ────────────────────────────────────────────────────────
-  formOverlay.addEventListener('click',    function (e) { if (e.target === formOverlay)    closeAll(); });
-  uploadOverlay.addEventListener('click',  function (e) { if (e.target === uploadOverlay)  closeUpload(); });
+  formOverlay.addEventListener('click', function (e) { if (e.target === formOverlay) closeAll(); });
   // Success overlay: clicking backdrop does NOT dismiss — user must press Done.
   successOverlay.addEventListener('click', function (e) { e.stopPropagation(); });
 
@@ -1361,8 +1297,7 @@ $rlmCategories = [
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     // ESC does NOT close the success modal — only the Done button does.
-    if (uploadOverlay.classList.contains('rlm-open'))  { closeUpload(); return; }
-    if (formOverlay.classList.contains('rlm-open'))    { closeAll(); }
+    if (formOverlay.classList.contains('rlm-open')) { closeAll(); }
   });
 
   // ── Wire up "Report Lost Item" tab trigger ────────────────────────────────

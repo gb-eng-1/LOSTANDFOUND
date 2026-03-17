@@ -1,0 +1,243 @@
+/* ════════════════════════════════════════════════════════════════════
+   Photo Picker — shared inline photo input widget
+   Used across all admin and student report/encode forms.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Widget wrapper ──────────────────────────────────────────────────── */
+.pp-wrap { font-family: 'Poppins', sans-serif; }
+
+/* ── Idle state ──────────────────────────────────────────────────────── */
+.pp-idle {
+  border: 1.5px dashed #d1d5db;
+  border-radius: 10px;
+  background: #fafafa;
+  padding: 20px 16px;
+  text-align: center;
+}
+.pp-icon {
+  font-size: 28px;
+  color: #d1d5db;
+  display: block;
+  margin-bottom: 8px;
+}
+.pp-hint {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* ── Button row ──────────────────────────────────────────────────────── */
+.pp-btn-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Shared button base ──────────────────────────────────────────────── */
+.pp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  line-height: 1;
+  transition: opacity .15s, box-shadow .15s;
+}
+.pp-btn:hover  { opacity: .85; }
+.pp-btn:focus  { outline: 2px solid #8b0000; outline-offset: 2px; }
+.pp-btn:active { opacity: .7; }
+
+/* Camera — dark red */
+.pp-btn--cam    { background: #8b0000; color: #fff; border-color: #8b0000; }
+/* Upload — dark gray */
+.pp-btn--upload { background: #374151; color: #fff; border-color: #374151; }
+/* Small secondary (retake / change) */
+.pp-btn--sm     { background: #fff; color: #374151; border-color: #d1d5db; padding: 6px 12px; }
+.pp-btn--sm:hover { border-color: #9ca3af; }
+/* Remove / delete */
+.pp-btn--del    { background: #fff; color: #dc2626; border-color: #fca5a5; padding: 6px 12px; }
+.pp-btn--del:hover { border-color: #dc2626; }
+
+/* ── Preview state ───────────────────────────────────────────────────── */
+.pp-preview {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f9fafb;
+}
+.pp-preview-img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  display: block;
+  background: #f9fafb;
+}
+.pp-preview-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 10px;
+  border-top: 1px solid #f3f4f6;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Shared Camera Overlay (singleton injected by photo-picker.js)
+   ════════════════════════════════════════════════════════════════════ */
+.pp-cam-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, .65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  font-family: 'Poppins', sans-serif;
+}
+.pp-cam-modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+  overflow: hidden;
+}
+.pp-cam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.pp-cam-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+.pp-cam-close-btn {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  border-radius: 4px;
+  font-family: inherit;
+}
+.pp-cam-close-btn:hover { color: #374151; }
+
+.pp-cam-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.pp-cam-frame {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f4f6;
+  position: relative;
+}
+.pp-cam-frame video,
+.pp-cam-shot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+.pp-cam-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #9ca3af;
+}
+.pp-cam-placeholder i    { font-size: 36px; color: #d1d5db; }
+.pp-cam-placeholder span { font-size: 12px; }
+
+.pp-cam-hint {
+  margin: 0;
+  font-size: 13px;
+  color: #374151;
+  text-align: center;
+  line-height: 1.5;
+}
+.pp-cam-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Camera action buttons */
+.pp-cam-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  font-size: 13px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  min-width: 130px;
+  justify-content: center;
+  line-height: 1;
+  transition: opacity .15s;
+}
+.pp-cam-btn:hover  { opacity: .85; }
+.pp-cam-btn:focus  { outline: 2px solid #8b0000; outline-offset: 2px; }
+
+.pp-cam-btn--start   { background: #8b0000; color: #fff; border-color: #8b0000; }
+.pp-cam-btn--capture { background: #16a34a; color: #fff; border-color: #16a34a; }
+.pp-cam-btn--stop    { background: #fff; color: #dc2626; border-color: #dc2626; min-width: 0; }
+.pp-cam-btn--retake  { background: #fff; color: #6b7280; border-color: #d1d5db; }
+.pp-cam-btn--use     { background: #16a34a; color: #fff; border-color: #16a34a; }
+
+/* ════════════════════════════════════════════════════════════════════
+   Photo field row — identical wrapper used in every form
+   ════════════════════════════════════════════════════════════════════ */
+.pp-photo-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.pp-photo-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  font-family: 'Poppins', sans-serif;
+  margin: 0;
+}
+.pp-optional {
+  font-weight: 400;
+  color: #6b7280;
+  font-size: 12px;
+  margin-left: 3px;
+}
+
+@media (max-width: 480px) {
+  .pp-btn-row { gap: 8px; }
+  .pp-btn     { padding: 7px 12px; }
+  .pp-cam-btn { min-width: 110px; padding: 8px 14px; }
+}
