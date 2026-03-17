@@ -24,6 +24,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 require dirname(__DIR__) . '/config/database.php';
 
+function notifyAdmin($pdo, $type, $title, $message, $relatedId = null) {
+    try {
+        $aid = $pdo->query('SELECT id FROM admins ORDER BY id LIMIT 1')->fetchColumn();
+        if ($aid) {
+            $pdo->prepare(
+                "INSERT INTO notifications (recipient_id, recipient_type, type, title, message, related_id, created_at)
+                 VALUES (?, 'admin', ?, ?, ?, ?, NOW())"
+            )->execute([(int)$aid, $type, $title, $message, $relatedId]);
+        }
+    } catch (Exception $e) { /* non-fatal */ }
+}
+
 $raw = file_get_contents('php://input');
 $in  = json_decode($raw, true);
 
@@ -48,7 +60,7 @@ if ($claimantName === '') {
 }
 if ($ubMail !== '' && !preg_match('/^[^@]+@ub\.edu\.ph$/i', $ubMail)) {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'UB Mail must end with @ub.edu.ph.']);
+    echo json_encode(['ok' => false, 'error' => 'Email must end with @ub.edu.ph.']);
     exit;
 }
 if (empty($imageDataUrl)) {
@@ -77,7 +89,7 @@ if (!$item) {
 /* Build appended description */
 $note  = "\n\n--- Claim Record ---";
 $note .= "\nClaimed By: {$claimantName}";
-if ($ubMail)    $note .= "\nUB Mail: {$ubMail}";
+if ($ubMail)    $note .= "\nEmail: {$ubMail}";
 if ($contact)   $note .= "\nContact: {$contact}";
 if ($dateAccomp) $note .= "\nDate Accomplished: {$dateAccomp}";
 $updatedDesc = ($item['item_description'] ?? '') . $note;
@@ -109,6 +121,14 @@ try {
         $s2->execute([':desc' => $updatedDesc, ':id' => $id]);
     }
 
+    /* Resolve matched lost report (REF-), if any — makes it appear in HistoryAdmin Guest Items */
+    try {
+        $pdo->prepare(
+            "UPDATE items SET status = 'Resolved', updated_at = NOW()
+              WHERE matched_barcode_id = ? AND id LIKE 'REF-%'"
+        )->execute([$id]);
+    } catch (PDOException $e) { /* non-fatal */ }
+
     /* Optional activity log */
     try {
         $pdo->prepare(
@@ -121,6 +141,13 @@ try {
     } catch (PDOException $e) { /* non-fatal */ }
 
     $pdo->commit();
+
+    notifyAdmin($pdo, 'item_claimed',
+        'Item Claimed',
+        'Found item ' . $id . ' has been claimed by ' . $claimantName . '.',
+        $id
+    );
+
     echo json_encode(['ok' => true, 'id' => $id]);
 
 } catch (PDOException $e) {

@@ -1,9 +1,10 @@
 <?php
 /**
  * Save lost item report to database.
- * Called from FoundAdmin when encoding a lost report (Encode Report).
- * POST body: JSON with category, full_name, contact_number, department, id, item, item_description, color, brand, date_lost, imageDataUrl
+ * Called from student portals and FoundAdmin (Encode Report).
+ * POST body: JSON with student_email, category/item_type, full_name, contact_number, department, id, item, item_description, color, brand, date_lost, imageDataUrl
  */
+if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
@@ -22,6 +23,18 @@ if (!is_array($data)) {
 }
 
 require __DIR__ . '/config/database.php';
+
+function notifyAdmin($pdo, $type, $title, $message, $relatedId = null) {
+    try {
+        $aid = $pdo->query('SELECT id FROM admins ORDER BY id LIMIT 1')->fetchColumn();
+        if ($aid) {
+            $pdo->prepare(
+                "INSERT INTO notifications (recipient_id, recipient_type, type, title, message, related_id, created_at)
+                 VALUES (?, 'admin', ?, ?, ?, ?, NOW())"
+            )->execute([(int)$aid, $type, $title, $message, $relatedId]);
+        }
+    } catch (Exception $e) { /* non-fatal */ }
+}
 
 // Generate REF-[10 digits] id for lost reports (e.g. REF-0000000001)
 $refId = null;
@@ -48,8 +61,12 @@ if ($contact || $dept) {
 }
 
 $studentEmail = trim($data['student_email'] ?? '');
+// If a student session is active, always use the session email (most reliable)
+if (!empty($_SESSION['student_email'])) {
+    $studentEmail = trim($_SESSION['student_email']);
+}
 $userId = trim($data['full_name'] ?? '');
-// Link report to student: prefer student_email (from portal) so "My Reports" finds it
+// Link report to student: prefer student_email so "My Reports" can find it
 if ($studentEmail !== '') {
     $userId = $studentEmail;
 } elseif ($studentNumber !== '') {
@@ -57,7 +74,7 @@ if ($studentEmail !== '') {
 } elseif ($userId === '') {
     $userId = null;
 }
-$itemType = trim($data['category'] ?? $data['item'] ?? '');
+$itemType = trim($data['category'] ?? $data['item_type'] ?? $data['item'] ?? '');
 $color = trim($data['color'] ?? '');
 $brand = trim($data['brand'] ?? '');
 $foundAt = trim($data['found_at'] ?? '');
@@ -86,6 +103,11 @@ try {
         ':status'           => 'Unclaimed Items',
     ]);
     echo json_encode(['ok' => true, 'id' => $refId]);
+    notifyAdmin($pdo, 'lost_report_created',
+        'New Lost Report Submitted',
+        'A new lost item report (' . $refId . ') has been submitted' . ($itemType ? ' for a ' . $itemType : '') . '.',
+        $refId
+    );
 } catch (PDOException $e) {
     http_response_code(500);
     $msg = 'Could not save report.';

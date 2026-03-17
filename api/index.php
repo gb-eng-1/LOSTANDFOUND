@@ -1,5 +1,6 @@
 <?php
 // Main API Entry Point
+session_start();
 
 // Handle CORS
 if (isset($_SERVER['HTTP_ORIGIN'])) {

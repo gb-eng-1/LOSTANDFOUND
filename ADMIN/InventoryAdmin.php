@@ -87,6 +87,7 @@ $itemCategories = require dirname(__DIR__) . '/config/categories.php';
             <div class="topbar-search-wrap topbar-search-left">
                 <form class="search-form" action="InventoryAdmin.php" method="get">
                     <input id="adminSearchInput" name="q" type="text" class="search-input" placeholder="Search" autocomplete="off">
+                    <div id="searchDropdown" class="search-dropdown"></div>
                     <button id="adminSearchClear" class="search-clear" type="button" title="Clear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
                     <button class="search-submit" type="submit" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
                 </form>
@@ -120,9 +121,9 @@ $itemCategories = require dirname(__DIR__) . '/config/categories.php';
             </div>
 
             <!-- Retention policy alert -->
-            <div class="inventory-retention-alert">
-                <span class="inventory-retention-text">There are <strong><?php echo (int)$overdueCount; ?></strong> Item<?php echo $overdueCount !== 1 ? 's' : ''; ?> that have exceeded the retention policy.</span>
-                <a href="#" class="inventory-dispose-link" id="inventoryDisposeLink">Dispose Items</a>
+            <div class="found-retention-bar">
+                <span class="found-retention-text">There are <strong><?php echo (int)$overdueCount; ?></strong> Item<?php echo $overdueCount !== 1 ? 's' : ''; ?> that have exceeded the retention policy.</span>
+                <a href="#" class="found-dispose-link" id="inventoryDisposeLink">Dispose Items</a>
             </div>
 
             <!-- Recovered Items (Internal) -->
@@ -213,20 +214,66 @@ $itemCategories = require dirname(__DIR__) . '/config/categories.php';
     }
 })();
 
-(function () {
-    var input = document.getElementById('adminSearchInput');
-    var clearBtn = document.getElementById('adminSearchClear');
-    if (!input || !clearBtn) return;
-    function syncClear() {
-        clearBtn.style.display = input.value ? 'flex' : 'none';
-    }
-    clearBtn.addEventListener('click', function () {
-        input.value = '';
-        input.focus();
-        syncClear();
-    });
-    input.addEventListener('input', syncClear);
-    syncClear();
+/* Search autofill */
+(function(){
+  var input=document.getElementById('adminSearchInput');
+  var clearBtn=document.getElementById('adminSearchClear');
+  var dropdown=document.getElementById('searchDropdown');
+  var form=input?input.closest('form'):null;
+  if(!input||!dropdown)return;
+  var timer=null,lastQ='';
+  function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});}
+  function render(items,q){
+    if(!items||!items.length){dropdown.innerHTML='<div class="sd-no-results">No results for "'+esc(q)+'"</div>';dropdown.style.display='block';return;}
+    dropdown.innerHTML=items.map(function(item){
+      var name=item.item_type||'Item';
+      if(item.brand)name+=' \u2013 '+item.brand;
+      if(item.color)name+=' ('+item.color+')';
+      var meta='';
+      if(item.found_at)meta+='<span class="sd-meta-item"><i class="fa-solid fa-location-dot"></i>'+esc(item.found_at)+'</span>';
+      if(item.date)meta+='<span class="sd-meta-item"><i class="fa-regular fa-calendar"></i>'+esc(item.date)+'</span>';
+      return '<div class="search-dropdown-item" data-id="'+esc(item.id)+'">'+
+        '<div class="sd-icon"><i class="fa-regular fa-file-lines"></i></div>'+
+        '<div class="sd-info">'+
+          '<div class="sd-barcode">'+esc(item.id)+'</div>'+
+          '<div class="sd-title">'+esc(name)+'</div>'+
+          (item.description?'<div class="sd-desc">'+esc(item.description)+'</div>':'')+
+          (meta?'<div class="sd-meta">'+meta+'</div>':'')+
+        '</div></div>';
+    }).join('');
+    dropdown.style.display='block';
+  }
+  function doSearch(q){if(q===lastQ)return;lastQ=q;
+    fetch('search_items.php?q='+encodeURIComponent(q),{credentials:'include'})
+      .then(function(r){return r.json();}).then(function(d){render(d,q);})
+      .catch(function(){dropdown.style.display='none';});
+  }
+  input.addEventListener('input',function(){
+    var v=this.value.trim();
+    if(clearBtn)clearBtn.style.display=v?'flex':'none';
+    clearTimeout(timer);
+    if(v.length<2){dropdown.style.display='none';lastQ='';return;}
+    timer=setTimeout(function(){doSearch(v);},220);
+  });
+  dropdown.addEventListener('click',function(e){
+    var row=e.target.closest('.search-dropdown-item');
+    if(!row)return;
+    var id=row.getAttribute('data-id');
+    if(!id)return;
+    input.value=id;dropdown.style.display='none';
+    if(clearBtn)clearBtn.style.display='flex';
+    var tableRow=document.querySelector('tr[data-id="'+id+'"]');
+    if(tableRow){tableRow.click();return;}
+    if(window.__encodedItems&&window.__encodedItems[id]&&window.openViewModalForEncodedItem){window.openViewModalForEncodedItem(window.__encodedItems[id]);return;}
+    if(form)form.submit();
+  });
+  document.addEventListener('click',function(e){
+    if(!input.contains(e.target)&&!dropdown.contains(e.target))dropdown.style.display='none';
+  });
+  if(clearBtn){
+    clearBtn.addEventListener('click',function(){input.value='';dropdown.style.display='none';lastQ='';clearBtn.style.display='none';input.focus();});
+    clearBtn.style.display=input.value?'flex':'none';
+  }
 })();
 
 (function () {

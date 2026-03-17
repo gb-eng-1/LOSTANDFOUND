@@ -84,7 +84,7 @@ if ($search !== '') {
 
   <main class="main">
     <div class="topbar topbar-maroon">
-      <div class="topbar-search-wrap topbar-search-left">
+      <div class="topbar-search-wrap topbar-search-right">
         <form class="search-form" action="ClaimItem.php" method="get">
           <input id="adminSearchInput" name="q" type="text" class="search-input" placeholder="Search items..." autocomplete="off" value="<?php echo htmlspecialchars($search); ?>">
           <button id="adminSearchClear" class="search-clear" type="button" title="Clear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>

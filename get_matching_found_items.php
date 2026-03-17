@@ -2,13 +2,14 @@
 /**
  * Get found items that match a lost report (REF-xxx).
  *
- * Matching logic (all four must match when both have values):
- * - Category: item_type (Electronics & Gadgets, etc.)
- * - Item Type: from item_description "Item Type: X"
+ * Scoring logic (20 pts each trait, 100 pts max):
+ * - Category (item_type)
+ * - Item Name (from item_description "Item Type: X")
  * - Color
  * - Brand
+ * - Description keyword overlap (Jaccard similarity × 20)
  *
- * Used when viewing a report on the Matching page - shows which found items match.
+ * Returns ALL found items with score > 0, sorted by score descending.
  */
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -43,6 +44,26 @@ function extractItemType($desc) {
     return '';
 }
 
+/**
+ * Jaccard keyword similarity between two text strings.
+ * Returns 0.0–1.0. Words ≤3 chars and metadata prefixes are ignored.
+ */
+function descriptionSimilarity($a, $b) {
+    $stopPrefixes = ['item type:', 'student number:', 'contact:', 'department:', '--- claim record ---', 'claimed by:', 'email:', 'date accomplished:'];
+    $clean = function($t) use ($stopPrefixes) {
+        $t = strtolower(strip_tags($t ?? ''));
+        foreach ($stopPrefixes as $p) $t = str_replace($p, ' ', $t);
+        preg_match_all('/[a-z]{4,}/', $t, $m);
+        return array_unique($m[0]);
+    };
+    $w1 = $clean($a);
+    $w2 = $clean($b);
+    if (!$w1 || !$w2) return 0.0;
+    $inter = array_intersect($w1, $w2);
+    $union = array_unique(array_merge($w1, $w2));
+    return count($inter) / count($union);
+}
+
 try {
     $stmt = $pdo->prepare("SELECT id, item_type, color, brand, item_description, found_at, storage_location FROM items WHERE id = ? AND id LIKE 'REF-%'");
     $stmt->execute([$id]);
@@ -70,29 +91,37 @@ try {
 
     $matches = [];
     foreach ($allFound as $f) {
-        $fCat = trim($f['item_type'] ?? '');
-        $fColor = trim($f['color'] ?? '');
-        $fBrand = trim($f['brand'] ?? '');
-        $fDesc = $f['item_description'] ?? '';
+        $fCat      = trim($f['item_type'] ?? '');
+        $fColor    = trim($f['color']     ?? '');
+        $fBrand    = trim($f['brand']     ?? '');
+        $fDesc     = $f['item_description'] ?? '';
         $fItemType = extractItemType($fDesc);
 
-        // Category, Item Type, Color, Brand - must match when both have values
-        $catMatch = (!$cat && !$fCat) || ($cat && $fCat && strcasecmp($cat, $fCat) === 0);
-        $itemTypeMatch = true;
-        if ($reportItemType !== '' && $fItemType !== '') {
-            $itemTypeMatch = strcasecmp($reportItemType, $fItemType) === 0;
-        }
-        $colorMatch = !$color || !$fColor || strcasecmp($color, $fColor) === 0;
-        $brandMatch = !$brand || !$fBrand || strcasecmp($brand, $fBrand) === 0;
+        $score = 0;
 
-        if ($catMatch && $itemTypeMatch && $colorMatch && $brandMatch) {
+        // Category (20 pts) — must match when both present
+        if ($cat && $fCat && strcasecmp($cat, $fCat) === 0)                           $score += 20;
+        // Item Name (20 pts)
+        if ($reportItemType && $fItemType && strcasecmp($reportItemType, $fItemType) === 0) $score += 20;
+        // Color (20 pts)
+        if ($color && $fColor && strcasecmp($color, $fColor) === 0)                   $score += 20;
+        // Brand (20 pts)
+        if ($brand && $fBrand && strcasecmp($brand, $fBrand) === 0)                   $score += 20;
+        // Description keyword overlap (up to 20 pts)
+        $score += (int) round(descriptionSimilarity($reportDesc, $fDesc) * 20);
+
+        if ($score > 0) {
             $matches[] = [
-                'id' => $f['id'],
-                'found_at' => $f['found_at'],
+                'id'               => $f['id'],
+                'found_at'         => $f['found_at'],
                 'storage_location' => $f['storage_location'],
+                'score'            => $score,
             ];
         }
     }
+
+    // Sort by score descending (best matches first)
+    usort($matches, fn($a, $b) => $b['score'] - $a['score']);
 
     echo json_encode(['ok' => true, 'found_items' => $matches]);
 } catch (PDOException $e) {

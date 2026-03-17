@@ -121,7 +121,8 @@
     if (!d.department || !d.department.trim()) return 'Please enter your department.';
     if (!d.item_description || !d.item_description.trim()) return 'Please enter the item description.';
     if (d.date_lost && d.date_lost.trim()) {
-      var selectedDate = new Date(d.date_lost);
+      var parts = d.date_lost.split('-');
+      var selectedDate = new Date(+parts[0], +parts[1] - 1, +parts[2]);
       var today = new Date(); today.setHours(0, 0, 0, 0);
       if (selectedDate > today) return 'Date lost cannot be in the future. Please select today or a past date.';
     }

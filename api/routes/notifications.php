@@ -10,26 +10,35 @@
 require_once __DIR__ . '/../helpers/Response.php';
 
 function handleNotificationRoute($method, $parts, $pdo) {
-    // Check authentication for all notification routes
-    if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_type'])) {
+    // Resolve session — admin uses admin_id, students use user_id + user_type
+    $userId   = null;
+    $userType = null;
+    if (!empty($_SESSION['admin_id'])) {
+        $userId   = (int) $_SESSION['admin_id'];
+        $userType = 'admin';
+    } elseif (!empty($_SESSION['user_id']) && !empty($_SESSION['user_type'])) {
+        $userId   = $_SESSION['user_id'];
+        $userType = $_SESSION['user_type'];
+    } else {
         Response::unauthorized();
+        return;
     }
-    
+
     if ($method === 'GET' && count($parts) === 1) {
         // GET /api/notifications
-        getNotifications($pdo);
+        getNotifications($pdo, $userId, $userType);
     }
     elseif ($method === 'GET' && count($parts) === 2 && $parts[1] === 'count') {
         // GET /api/notifications/count
-        getNotificationCount($pdo);
+        getNotificationCount($pdo, $userId, $userType);
     }
     elseif ($method === 'PUT' && count($parts) === 3 && $parts[2] === 'read') {
         // PUT /api/notifications/:id/read
-        markNotificationAsRead($pdo, $parts[1]);
+        markNotificationAsRead($pdo, $parts[1], $userId, $userType);
     }
     elseif ($method === 'DELETE' && count($parts) === 2) {
         // DELETE /api/notifications/:id
-        deleteNotification($pdo, $parts[1]);
+        deleteNotification($pdo, $parts[1], $userId, $userType);
     }
     else {
         Response::error('Method not allowed', 'METHOD_NOT_ALLOWED', 405);
@@ -40,10 +49,8 @@ function handleNotificationRoute($method, $parts, $pdo) {
  * GET /api/notifications/count
  * Returns count of unread notifications
  */
-function getNotificationCount($pdo) {
+function getNotificationCount($pdo, $userId, $userType) {
     try {
-        $userType = $_SESSION['user_type'];
-        $userId = $_SESSION['user_id'];
         
         // Get count of unread notifications
         $sql = "SELECT COUNT(*) as unread_count FROM notifications 
@@ -63,10 +70,8 @@ function getNotificationCount($pdo) {
  * GET /api/notifications
  * Returns unread notifications ordered by creation date (newest first)
  */
-function getNotifications($pdo) {
+function getNotifications($pdo, $userId, $userType) {
     try {
-        $userType = $_SESSION['user_type'];
-        $userId = $_SESSION['user_id'];
         
         // Get user's notifications (unread first, then read, ordered by creation date)
         $sql = "SELECT * FROM notifications 
@@ -92,10 +97,8 @@ function getNotifications($pdo) {
  * PUT /api/notifications/:id/read
  * Mark a notification as read
  */
-function markNotificationAsRead($pdo, $notificationId) {
+function markNotificationAsRead($pdo, $notificationId, $userId, $userType) {
     try {
-        $userType = $_SESSION['user_type'];
-        $userId = $_SESSION['user_id'];
         
         // Check if notification exists and belongs to user
         $checkStmt = $pdo->prepare("SELECT * FROM notifications WHERE id = ? AND recipient_type = ? AND recipient_id = ?");
@@ -127,10 +130,8 @@ function markNotificationAsRead($pdo, $notificationId) {
  * DELETE /api/notifications/:id
  * Delete a notification
  */
-function deleteNotification($pdo, $notificationId) {
+function deleteNotification($pdo, $notificationId, $userId, $userType) {
     try {
-        $userType = $_SESSION['user_type'];
-        $userId = $_SESSION['user_id'];
         
         // Check if notification exists and belongs to user
         $checkStmt = $pdo->prepare("SELECT * FROM notifications WHERE id = ? AND recipient_type = ? AND recipient_id = ?");

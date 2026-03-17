@@ -119,6 +119,7 @@ try {
     <title>UB Lost and Found System - Matching</title>
     <link rel="stylesheet" href="AdminDashboard.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="ItemMatchedAdmin.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="../assets/photo-picker.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="NotificationsDropdown.css?v=<?php echo time(); ?>">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -265,17 +266,12 @@ try {
 .btn-dispose-item:hover { opacity:0.85; }
 .btn-dispose-item:disabled { opacity:0.5; cursor:not-allowed; }
 .expiry-empty-msg { color:#9ca3af; font-size:13px; font-style:italic; }
-.found-retention-bar {
-  display:flex; align-items:center; gap:12px;
-  background:#fff8f0; border:1px solid #fde68a;
-  border-radius:8px; padding:10px 16px; margin-top:14px;
+.found-header-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
 }
-.found-retention-text { font-size:13px; color:#374151; }
-.found-dispose-link {
-  font-size:12px; font-weight:600; color:#8b0000;
-  text-decoration:none; white-space:nowrap; margin-left:auto;
-}
-.found-dispose-link:hover { text-decoration:underline; }
 
 /* ── Tab icon sizing + button UI consistency ──────────────── */
 .found-tab-text i { font-size: 11px; }
@@ -289,6 +285,31 @@ try {
     border-radius: 7px;
     letter-spacing: 0.01em;
 }
+
+/* ── Recent Action Banner ─────────────────────────────────── */
+.recent-action-banner {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: #f0fdf4; border: 1px solid #86efac;
+    border-radius: 8px; padding: 11px 14px;
+    margin-bottom: 10px;
+}
+.rab-icon { color: #16a34a; font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+.rab-text { flex: 1; font-size: 13px; color: #166534; line-height: 1.5; }
+.rab-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.rab-mark-read {
+    font-size: 11px; font-weight: 600; color: #166534;
+    background: none; border: 1px solid #86efac;
+    border-radius: 5px; padding: 4px 10px; cursor: pointer;
+    font-family: Poppins, sans-serif; transition: background 0.15s;
+    white-space: nowrap;
+}
+.rab-mark-read:hover { background: #dcfce7; }
+.rab-dismiss {
+    background: none; border: none; cursor: pointer;
+    color: #6b7280; font-size: 14px; padding: 3px 7px;
+    border-radius: 4px; line-height: 1; transition: background 0.15s, color 0.15s;
+}
+.rab-dismiss:hover { background: #dcfce7; color: #166534; }
 </style>
 </head>
 <body class="item-matched-page">
@@ -342,6 +363,7 @@ try {
             <div class="topbar-search-wrap topbar-search-left">
                 <form class="search-form" action="FoundAdmin.php" method="get">
                     <input id="adminSearchInput" name="q" type="text" class="search-input" placeholder="Search" autocomplete="off">
+                    <div id="searchDropdown" class="search-dropdown"></div>
                     <button id="adminSearchClear" class="search-clear" type="button" title="Clear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
                     <button class="search-submit" type="submit" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
                 </form>
@@ -365,7 +387,26 @@ try {
             <div class="content-row content-row-single">
                 <section class="content-left">
 
+                    <div class="found-header-row">
                     <h2 class="page-title">Matched Items</h2>
+
+                    <!-- Recent action banner (shown after a claim is confirmed) -->
+                    <div id="recentActionBanner" class="recent-action-banner" style="display:none;" role="status" aria-live="polite">
+                        <div class="rab-icon"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="rab-text" id="recentActionText"></div>
+                        <div class="rab-actions">
+                            <button type="button" class="rab-mark-read" id="rabMarkRead">Mark as Read</button>
+                            <button type="button" class="rab-dismiss" id="rabDismiss" aria-label="Dismiss notification"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Retention policy bar -->
+                    <div class="found-retention-bar">
+                        <span class="found-retention-text">There are <strong><?php echo (int)$overdueCount; ?></strong> Item<?php echo $overdueCount !== 1 ? 's' : ''; ?> that have exceeded the retention policy.</span>
+                        <?php if (!empty($expiringItems)): ?>
+                        <a href="#" class="found-dispose-link" id="expiryTriggerLink">View Items</a>
+                        <?php endif; ?>
+                    </div>
 
                     <!-- Header: tabs + View Inventory + dual filters -->
                     <div class="found-tabs-actions-row">
@@ -391,6 +432,7 @@ try {
                             <option value="year">This Year</option>
                         </select>
                     </div>
+                    </div><!-- /.found-header-row -->
 
                     <!-- All Items: For Claiming (Internal) -->
                     <div class="inventory-card matched-reports-card" id="recoveredSection">
@@ -553,13 +595,6 @@ try {
                         </div>
                     </div>
 
-                    <!-- Retention bar (matches FoundAdmin style) -->
-                    <div class="found-retention-bar" style="margin-top:14px;">
-                        <span class="found-retention-text">There are <strong><?php echo (int)$overdueCount; ?></strong> Item<?php echo $overdueCount !== 1 ? 's' : ''; ?> that have exceeded the retention policy.</span>
-                        <?php if (!empty($expiringItems)): ?>
-                        <a href="#" class="found-dispose-link" id="expiryTriggerLink">View Items</a>
-                        <?php endif; ?>
-                    </div>
 
                 </section>
             </div>
@@ -940,9 +975,9 @@ try {
                     </div>
                 </div>
                 <div class="ccm-form-row" style="align-items:flex-start;">
-                    <label class="ccm-label" for="ccmUbMail" style="padding-top:8px;">UB Mail:</label>
+                    <label class="ccm-label" for="ccmUbMail" style="padding-top:8px;">Email:</label>
                     <div style="flex:1;">
-                        <input type="text" id="ccmUbMail" class="ccm-input" placeholder="e.g. 200981@ub.edu.ph">
+                        <input type="text" id="ccmUbMail" class="ccm-input" style="width:100%;box-sizing:border-box;" placeholder="e.g. 200981@ub.edu.ph">
                         <span id="ccmUbMailError" style="display:none;font-size:11px;color:#dc2626;margin-top:3px;display:block;">
                             Must be a valid @ub.edu.ph email address.
                         </span>
@@ -952,22 +987,31 @@ try {
                     <label class="ccm-label" for="ccmContactNumber">Contact Number:</label>
                     <input type="text" id="ccmContactNumber" class="ccm-input">
                 </div>
-                <div class="ccm-form-row">
-                    <label class="ccm-label">Upload Image: <span style="color:#dc2626;">*</span></label>
-                    <div class="ccm-file-row" id="ccmFileRow">
-                        <input type="file" id="ccmFileInput" class="ccm-file-input" accept="image/*"
-                               onchange="handleCcmFile(this)">
-                        <i class="fa-solid fa-image" style="color:#9ca3af;font-size:13px;"></i>
-                        <span id="ccmFileName" style="font-size:12px;color:#6b7280;">No file chosen</span>
-                        <button type="button" id="ccmFileClear" class="ccm-file-clear"
-                                onclick="clearCcmFile(event)">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
+                <div class="ccm-form-row" style="align-items:flex-start;">
+                    <label class="ccm-label" style="padding-top:8px;">Photo: <span style="color:#dc2626;">*</span></label>
+                    <div style="flex:1;">
+                        <div class="pp-wrap" id="ccmPhotoPicker">
+                            <div class="pp-idle">
+                                <i class="fa-regular fa-image pp-icon"></i>
+                                <p class="pp-hint">No photo yet</p>
+                                <div class="pp-btn-row">
+                                    <button type="button" class="pp-btn pp-btn--cam" data-pp="camera"><i class="fa-solid fa-camera"></i> Camera</button>
+                                    <button type="button" class="pp-btn pp-btn--upload" data-pp="upload"><i class="fa-solid fa-upload"></i> Upload</button>
+                                </div>
+                            </div>
+                            <div class="pp-preview" style="display:none">
+                                <img class="pp-preview-img" src="" alt="Photo preview">
+                                <div class="pp-preview-actions">
+                                    <button type="button" class="pp-btn pp-btn--sm" data-pp="camera"><i class="fa-solid fa-camera"></i> Retake</button>
+                                    <button type="button" class="pp-btn pp-btn--sm" data-pp="upload"><i class="fa-solid fa-upload"></i> Change</button>
+                                    <button type="button" class="pp-btn pp-btn--del" data-pp="remove"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                            <input type="file" class="pp-file" accept="image/*" style="display:none">
+                        </div>
+                        <span id="ccmFileError" style="display:none;font-size:11px;color:#dc2626;margin-top:4px;display:block;">A photo is required to confirm the claim.</span>
                     </div>
                 </div>
-                <span id="ccmFileError" style="display:none;font-size:11px;color:#dc2626;margin-top:-6px;margin-bottom:4px;padding-left:130px;">
-                    A photo is required to confirm the claim.
-                </span>
             </div>
 
             <!-- Action Taken -->
@@ -975,7 +1019,7 @@ try {
                 <p class="ccm-section-title-gray">Action Taken</p>
                 <div class="ccm-form-row">
                     <label class="ccm-label" for="ccmDateAccomplishment">Date of Accomplishment:</label>
-                    <input type="date" id="ccmDateAccomplishment" class="ccm-input" style="flex:1;">
+                    <input type="date" id="ccmDateAccomplishment" class="ccm-input" style="flex:1;" max="<?php echo date('Y-m-d'); ?>">
                 </div>
             </div>
         </div>
@@ -986,6 +1030,7 @@ try {
     </div>
 </div>
 
+<script src="../assets/photo-picker.js?v=<?php echo time(); ?>"></script>
 <script>
 /* Admin dropdown */
 (function () {
@@ -1003,15 +1048,66 @@ try {
     });
 })();
 
-/* Search clear */
-(function () {
-    var inp = document.getElementById('adminSearchInput');
-    var clr = document.getElementById('adminSearchClear');
-    if (!inp || !clr) return;
-    function sync() { clr.style.display = inp.value ? 'flex' : 'none'; }
-    clr.addEventListener('click', function () { inp.value = ''; inp.focus(); sync(); });
-    inp.addEventListener('input', sync);
-    sync();
+/* Search autofill */
+(function(){
+  var input=document.getElementById('adminSearchInput');
+  var clearBtn=document.getElementById('adminSearchClear');
+  var dropdown=document.getElementById('searchDropdown');
+  var form=input?input.closest('form'):null;
+  if(!input||!dropdown)return;
+  var timer=null,lastQ='';
+  function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});}
+  function render(items,q){
+    if(!items||!items.length){dropdown.innerHTML='<div class="sd-no-results">No results for "'+esc(q)+'"</div>';dropdown.style.display='block';return;}
+    dropdown.innerHTML=items.map(function(item){
+      var name=item.item_type||'Item';
+      if(item.brand)name+=' \u2013 '+item.brand;
+      if(item.color)name+=' ('+item.color+')';
+      var meta='';
+      if(item.found_at)meta+='<span class="sd-meta-item"><i class="fa-solid fa-location-dot"></i>'+esc(item.found_at)+'</span>';
+      if(item.date)meta+='<span class="sd-meta-item"><i class="fa-regular fa-calendar"></i>'+esc(item.date)+'</span>';
+      return '<div class="search-dropdown-item" data-id="'+esc(item.id)+'">'+
+        '<div class="sd-icon"><i class="fa-regular fa-file-lines"></i></div>'+
+        '<div class="sd-info">'+
+          '<div class="sd-barcode">'+esc(item.id)+'</div>'+
+          '<div class="sd-title">'+esc(name)+'</div>'+
+          (item.description?'<div class="sd-desc">'+esc(item.description)+'</div>':'')+
+          (meta?'<div class="sd-meta">'+meta+'</div>':'')+
+        '</div></div>';
+    }).join('');
+    dropdown.style.display='block';
+  }
+  function doSearch(q){if(q===lastQ)return;lastQ=q;
+    fetch('search_items.php?q='+encodeURIComponent(q),{credentials:'include'})
+      .then(function(r){return r.json();}).then(function(d){render(d,q);})
+      .catch(function(){dropdown.style.display='none';});
+  }
+  input.addEventListener('input',function(){
+    var v=this.value.trim();
+    if(clearBtn)clearBtn.style.display=v?'flex':'none';
+    clearTimeout(timer);
+    if(v.length<2){dropdown.style.display='none';lastQ='';return;}
+    timer=setTimeout(function(){doSearch(v);},220);
+  });
+  dropdown.addEventListener('click',function(e){
+    var row=e.target.closest('.search-dropdown-item');
+    if(!row)return;
+    var id=row.getAttribute('data-id');
+    if(!id)return;
+    input.value=id;dropdown.style.display='none';
+    if(clearBtn)clearBtn.style.display='flex';
+    var tableRow=document.querySelector('tr[data-id="'+id+'"]');
+    if(tableRow){tableRow.click();return;}
+    if(window.__encodedItems&&window.__encodedItems[id]&&window.openViewModalForEncodedItem){window.openViewModalForEncodedItem(window.__encodedItems[id]);return;}
+    if(form)form.submit();
+  });
+  document.addEventListener('click',function(e){
+    if(!input.contains(e.target)&&!dropdown.contains(e.target))dropdown.style.display='none';
+  });
+  if(clearBtn){
+    clearBtn.addEventListener('click',function(){input.value='';dropdown.style.display='none';lastQ='';clearBtn.style.display='none';input.focus();});
+    clearBtn.style.display=input.value?'flex':'none';
+  }
 })();
 
 /* ── Tab switching: show/hide sections + swap filters ─────────── */
@@ -1191,9 +1287,9 @@ window.openConfirmClaimModal = function (row) {
     if (ubErr) ubErr.style.display = 'none';
     var fileErr = document.getElementById('ccmFileError');
     if (fileErr) fileErr.style.display = 'none';
-    clearCcmFile(null);
+    clearCcmFile();
     var dt = document.getElementById('ccmDateAccomplishment');
-    if (dt) dt.value = new Date().toISOString().slice(0, 10);
+    if (dt) { dt.value = new Date().toISOString().slice(0, 10); dt.max = new Date().toISOString().slice(0, 10); }
 
     o.classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -1221,26 +1317,14 @@ window.closeConfirmClaimModal = function () {
     document.body.style.overflow = '';
 };
 
-window.handleCcmFile = function (input) {
-    var file = input.files && input.files[0];
-    if (!file) return;
-    var nm = document.getElementById('ccmFileName');
-    var cl = document.getElementById('ccmFileClear');
-    if (nm) nm.textContent = file.name;
-    if (cl) cl.style.display = 'inline-flex';
-    var r = new FileReader();
-    r.onload = function (e) { window._ccmImg = e.target.result; };
-    r.readAsDataURL(file);
-};
-window.clearCcmFile = function (e) {
-    if (e) e.stopPropagation();
+/* Photo picker for claim confirmation modal */
+window._ccmPP = PhotoPicker.init({
+    el: 'ccmPhotoPicker',
+    onChange: function (dataUrl) { window._ccmImg = dataUrl || null; }
+});
+window.clearCcmFile = function () {
     window._ccmImg = null;
-    var inp = document.getElementById('ccmFileInput');
-    var nm  = document.getElementById('ccmFileName');
-    var cl  = document.getElementById('ccmFileClear');
-    if (inp) inp.value = '';
-    if (nm)  nm.textContent = 'No file chosen';
-    if (cl)  cl.style.display = 'none';
+    if (window._ccmPP) window._ccmPP.clear();
 };
 
 /* Confirm submit */
@@ -1286,6 +1370,12 @@ window.clearCcmFile = function (e) {
         var id = row.getAttribute('data-id') || '';
         if (!id) return;
 
+        /* Capture display values before closing the modal */
+        var claimantNameVal = cName.value.trim();
+        var dateAccompVal   = (document.getElementById('ccmDateAccomplishment') || {}).value || '';
+        var itemNameVal     = row.getAttribute('data-item-name') || row.getAttribute('data-category') || 'Item';
+        var barcodeVal      = id;
+
         btn.disabled = true; btn.textContent = 'Saving…';
         fetch(claimUrl, {
             method: 'POST',
@@ -1311,6 +1401,14 @@ window.clearCcmFile = function (e) {
                     var empty = document.createElement('tr');
                     empty.innerHTML = '<td colspan="' + colCount + '" class="table-empty">No items.</td>';
                     tbody.appendChild(empty);
+                }
+                /* Show recent action banner */
+                var banner     = document.getElementById('recentActionBanner');
+                var bannerText = document.getElementById('recentActionText');
+                if (banner && bannerText) {
+                    bannerText.textContent = itemNameVal + ' (Barcode: ' + barcodeVal + ') has been successfully claimed by ' + claimantNameVal + (dateAccompVal ? ' on ' + dateAccompVal : '') + '.';
+                    banner.style.display = 'flex';
+                    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 }
             } else {
                 alert(data.error || 'Could not claim item. Try again.');
@@ -1348,6 +1446,18 @@ window.clearCcmFile = function (e) {
     if (triggerLink) triggerLink.addEventListener('click', function (e) { e.preventDefault(); openExpiry(); });
     if (closeBtn)    closeBtn.addEventListener('click', closeExpiry);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeExpiry(); });
+})();
+
+/* ── Recent action banner dismiss ──────────────────────────── */
+(function () {
+    function dismissBanner() {
+        var b = document.getElementById('recentActionBanner');
+        if (b) b.style.display = 'none';
+    }
+    var rabDismiss = document.getElementById('rabDismiss');
+    var rabMark    = document.getElementById('rabMarkRead');
+    if (rabDismiss) rabDismiss.addEventListener('click', dismissBanner);
+    if (rabMark)    rabMark.addEventListener('click', dismissBanner);
 })();
 
 /* Keyboard close */

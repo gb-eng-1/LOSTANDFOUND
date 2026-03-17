@@ -96,7 +96,7 @@
     }
   }
 
-  /* ── Poll unread count every 15 s ── */
+  /* ── Poll unread count every 5 s ── */
   function pollCount() {
     fetch('/LOSTANDFOUND/api/notifications/count', { credentials: 'include' })
       .then(function (r) { return r.json(); })
@@ -105,6 +105,10 @@
           var count = json.data.unread_count || 0;
           if (count !== lastUnreadCount) {
             updateBadge(count);
+            // If new notifications appeared and panel is open, refresh the list immediately
+            if (count > lastUnreadCount && lastUnreadCount >= 0 && panel.classList.contains('open')) {
+              fetchNotifications();
+            }
             lastUnreadCount = count;
           }
         }
@@ -168,5 +172,5 @@
 
   /* ── Init ── */
   pollCount();
-  setInterval(pollCount, 15000);
+  setInterval(pollCount, 5000);
 })();

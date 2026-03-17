@@ -3,6 +3,8 @@
 require_once __DIR__ . '/auth_check.php';
 require_once dirname(__DIR__) . '/config/database.php';
 
+$today = date('Y-m-d');
+
 // ── Lost reports (all REF- items, both web-submitted and admin-encoded) ────────
 $stmt = $pdo->query("SELECT id, user_id, item_type, color, brand, found_at, found_by, date_encoded, date_lost, item_description, storage_location, image_data, status, created_at FROM items WHERE id LIKE 'REF-%' ORDER BY created_at DESC");
 $encodedItems = [];
@@ -190,6 +192,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             <div class="topbar-search-wrap topbar-search-left">
                 <form class="search-form" action="AdminReports.php" method="get">
                     <input id="adminSearchInput" name="q" type="text" class="search-input" placeholder="Search" autocomplete="off">
+                    <div id="searchDropdown" class="search-dropdown"></div>
                     <button id="adminSearchClear" class="search-clear" type="button" title="Clear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
                     <button class="search-submit" type="submit" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
                 </form>
@@ -242,13 +245,14 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                                 <th>ID</th>
                                 <th>Contact Number</th>
                                 <th>Date Lost</th>
+                                <th>Retention End</th>
                                 <th>Action</th>
                             </tr>
                             </thead>
                             <tbody>
                             <?php
                             if (empty($encodedItems)) {
-                                echo '<tr><td colspan="7" class="table-empty">No reports yet. Encode Report in Found to add lost item reports.</td></tr>';
+                                echo '<tr><td colspan="8" class="table-empty">No reports yet. Encode Report in Found to add lost item reports.</td></tr>';
                             } else {
                                 foreach ($encodedItems as $it) {
                                     $refId      = htmlspecialchars($it['id'] ?? '');
@@ -257,6 +261,16 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                                     $studentNum = htmlspecialchars($it['student_number'] ?? '');
                                     $contact    = htmlspecialchars($it['contact'] ?? '');
                                     $dateLost   = htmlspecialchars($it['date_lost'] ?? '');
+                                    $dateEnc    = $it['dateEncoded'] ?? '';
+                                    $retEnd     = $dateEnc ? date('Y-m-d', strtotime($dateEnc . ' +1 year')) : '';
+                                    $isOverdueR  = $retEnd && $retEnd < $today;
+                                    $isExpiringR = !$isOverdueR && $retEnd && $retEnd <= date('Y-m-d', strtotime('+30 days'));
+                                    $retBadgeR  = '';
+                                    if ($isOverdueR) {
+                                        $retBadgeR = ' <span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;white-space:nowrap;vertical-align:middle;">EXPIRED</span>';
+                                    } elseif ($isExpiringR) {
+                                        $retBadgeR = ' <span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;white-space:nowrap;vertical-align:middle;">EXPIRING</span>';
+                                    }
                                     $img        = isset($it['imageDataUrl']) ? htmlspecialchars($it['imageDataUrl'], ENT_QUOTES, 'UTF-8') : '';
                                     $dataAttrs  = ' data-id="' . $refId . '"'
                                                . ' data-category="' . $cat . '"'
@@ -274,6 +288,7 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                                        . '<td>' . $studentNum . '</td>'
                                        . '<td>' . $contact . '</td>'
                                        . '<td>' . $dateLost . '</td>'
+                                       . '<td>' . htmlspecialchars($retEnd) . $retBadgeR . '</td>'
                                        . '<td class="reports-action-cell">'
                                        .   '<a href="#" class="reports-btn reports-btn-view btn-view">View</a>'
                                        .   '<button type="button" class="reports-btn reports-btn-cancel btn-cancel-reports">Cancel</button>'
@@ -332,15 +347,66 @@ while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         }
     })();
 
-    /* Search clear button */
-    (function () {
-        var input    = document.getElementById('adminSearchInput');
-        var clearBtn = document.getElementById('adminSearchClear');
-        if (!input || !clearBtn) return;
-        function syncClear() { clearBtn.style.display = input.value ? 'flex' : 'none'; }
-        clearBtn.addEventListener('click', function () { input.value = ''; input.focus(); syncClear(); });
-        input.addEventListener('input', syncClear);
-        syncClear();
+    /* Search autofill */
+    (function(){
+      var input=document.getElementById('adminSearchInput');
+      var clearBtn=document.getElementById('adminSearchClear');
+      var dropdown=document.getElementById('searchDropdown');
+      var form=input?input.closest('form'):null;
+      if(!input||!dropdown)return;
+      var timer=null,lastQ='';
+      function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});}
+      function render(items,q){
+        if(!items||!items.length){dropdown.innerHTML='<div class="sd-no-results">No results for "'+esc(q)+'"</div>';dropdown.style.display='block';return;}
+        dropdown.innerHTML=items.map(function(item){
+          var name=item.item_type||'Item';
+          if(item.brand)name+=' \u2013 '+item.brand;
+          if(item.color)name+=' ('+item.color+')';
+          var meta='';
+          if(item.found_at)meta+='<span class="sd-meta-item"><i class="fa-solid fa-location-dot"></i>'+esc(item.found_at)+'</span>';
+          if(item.date)meta+='<span class="sd-meta-item"><i class="fa-regular fa-calendar"></i>'+esc(item.date)+'</span>';
+          return '<div class="search-dropdown-item" data-id="'+esc(item.id)+'">'+
+            '<div class="sd-icon"><i class="fa-regular fa-file-lines"></i></div>'+
+            '<div class="sd-info">'+
+              '<div class="sd-barcode">'+esc(item.id)+'</div>'+
+              '<div class="sd-title">'+esc(name)+'</div>'+
+              (item.description?'<div class="sd-desc">'+esc(item.description)+'</div>':'')+
+              (meta?'<div class="sd-meta">'+meta+'</div>':'')+
+            '</div></div>';
+        }).join('');
+        dropdown.style.display='block';
+      }
+      function doSearch(q){if(q===lastQ)return;lastQ=q;
+        fetch('search_items.php?q='+encodeURIComponent(q),{credentials:'include'})
+          .then(function(r){return r.json();}).then(function(d){render(d,q);})
+          .catch(function(){dropdown.style.display='none';});
+      }
+      input.addEventListener('input',function(){
+        var v=this.value.trim();
+        if(clearBtn)clearBtn.style.display=v?'flex':'none';
+        clearTimeout(timer);
+        if(v.length<2){dropdown.style.display='none';lastQ='';return;}
+        timer=setTimeout(function(){doSearch(v);},220);
+      });
+      dropdown.addEventListener('click',function(e){
+        var row=e.target.closest('.search-dropdown-item');
+        if(!row)return;
+        var id=row.getAttribute('data-id');
+        if(!id)return;
+        input.value=id;dropdown.style.display='none';
+        if(clearBtn)clearBtn.style.display='flex';
+        var tableRow=document.querySelector('tr[data-id="'+id+'"]');
+        if(tableRow){tableRow.click();return;}
+        if(window.__encodedItems&&window.__encodedItems[id]&&window.openViewModalForEncodedItem){window.openViewModalForEncodedItem(window.__encodedItems[id]);return;}
+        if(form)form.submit();
+      });
+      document.addEventListener('click',function(e){
+        if(!input.contains(e.target)&&!dropdown.contains(e.target))dropdown.style.display='none';
+      });
+      if(clearBtn){
+        clearBtn.addEventListener('click',function(){input.value='';dropdown.style.display='none';lastQ='';clearBtn.style.display='none';input.focus();});
+        clearBtn.style.display=input.value?'flex':'none';
+      }
     })();
 
     /* Category filter */

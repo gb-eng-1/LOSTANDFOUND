@@ -71,15 +71,7 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css">
     <style>.fa-solid,.fa-regular,.fa-brands{display:inline-block!important;font-style:normal!important;font-variant:normal!important;text-rendering:auto!important;-webkit-font-smoothing:antialiased;}</style>
     <script defer src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/js/all.min.js"></script>
-<style>
-/* ── Issue 1: Sidebar mobile height fix ── */
-@media (max-width: 900px) {
-  .sidebar  { min-height: 0 !important; height: auto !important; }
-  .nav-menu { flex: none !important; }
-}
-
-/* ── Issue 2: Responsive layout ── */
-.main-content-wrap { min-width: 0; }
+<style>/* placeholder — guest modal and layout styles moved to FoundAdmin.css */
 
 /* Header row: title on top, tabs+actions row below */
 .found-header-row {
@@ -546,6 +538,7 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
             <div class="topbar-search-wrap topbar-search-left">
                 <form class="search-form" action="FoundAdmin.php" method="get">
                     <input id="adminSearchInput" name="q" type="text" class="search-input" placeholder="Search" autocomplete="off">
+                    <div id="searchDropdown" class="search-dropdown"></div>
                     <button id="adminSearchClear" class="search-clear" type="button" title="Clear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
                     <button class="search-submit" type="submit" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
                 </form>
@@ -610,8 +603,8 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
         </div>
 
         <!-- Recovered Items (Internal) - shown when All Items tab active -->
-        <div class="found-card found-section-internal" id="recoveredSection">
-            <div class="found-title">Recovered Items (Internal)</div>
+        <div class="inventory-card found-section-internal" id="recoveredSection">
+            <div class="inventory-title">Recovered Items (Internal)</div>
             <div class="table-wrapper">
                 <table class="found-table">
                 <thead>
@@ -637,6 +630,8 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                         $foundAt = htmlspecialchars($it['found_at'] ?? '');
                         $dateEncoded = $it['dateEncoded'] ?? '';
                         $retentionEnd = $dateEncoded ? date('Y-m-d', strtotime($dateEncoded . ' +2 years')) : '';
+                        $isOverdue  = $retentionEnd && $retentionEnd < $today;
+                        $isExpiring = !$isOverdue && $retentionEnd && $retentionEnd <= date('Y-m-d', strtotime('+30 days'));
                         $storage = htmlspecialchars($it['storage_location'] ?? '');
                         $timestamp = htmlspecialchars($it['created_at'] ?? $it['dateEncoded'] ?? '');
                         if ($timestamp && strlen($timestamp) === 10) $timestamp .= ' 00:00:00';
@@ -648,7 +643,13 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                         if ($img) $dataAttrs .= ' data-image="' . $img . '"';
                         $rawStorage = $it['storage_location'] ?? '';
                         $cancelBtn = (trim($rawStorage) === '') ? '<button type="button" class="found-btn-cancel">Cancel</button>' : '';
-                        echo '<tr' . $dataAttrs . '><td>' . $barcodeId . '</td><td>' . $cat . '</td><td>' . $foundAt . '</td><td>' . htmlspecialchars($dateEncoded) . '</td><td>' . htmlspecialchars($retentionEnd) . '</td><td>' . $storage . '</td><td>' . $timestamp . '</td><td class="found-action-cell"><button type="button" class="found-btn-view">View</button>' . $cancelBtn . '</td></tr>';
+                        $retBadge = '';
+                        if ($isOverdue) {
+                            $retBadge = ' <span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;white-space:nowrap;vertical-align:middle;">EXPIRED</span>';
+                        } elseif ($isExpiring) {
+                            $retBadge = ' <span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;white-space:nowrap;vertical-align:middle;">EXPIRING</span>';
+                        }
+                        echo '<tr' . $dataAttrs . '><td>' . $barcodeId . '</td><td>' . $cat . '</td><td>' . $foundAt . '</td><td>' . htmlspecialchars($dateEncoded) . '</td><td>' . htmlspecialchars($retentionEnd) . $retBadge . '</td><td>' . $storage . '</td><td>' . $timestamp . '</td><td class="found-action-cell"><button type="button" class="found-btn-view">View</button>' . $cancelBtn . '</td></tr>';
                     }
                 }
                 ?>
@@ -658,8 +659,8 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
         </div>
 
         <!-- Guest Items - shown when Guest Items tab active -->
-        <div class="found-card found-section-guest" id="guestSection" style="display: none;">
-            <div class="found-title found-title-guest">Recovered IDs (External)</div>
+        <div class="inventory-card found-section-guest" id="guestSection" style="display: none;">
+            <div class="inventory-title found-title-guest">Recovered IDs (External)</div>
             <div class="table-wrapper">
                 <table class="found-table found-table-guest">
                 <thead>
@@ -683,6 +684,8 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                         $encodedBy       = htmlspecialchars($it['found_by'] ?? '');
                         $dateSurrendered = $it['dateEncoded'] ?? $it['date_encoded'] ?? '';
                         $retentionEnd    = $dateSurrendered ? date('Y-m-d', strtotime($dateSurrendered . ' +1 year')) : '';
+                        $isOverdueG  = $retentionEnd && $retentionEnd < $today;
+                        $isExpiringG = !$isOverdueG && $retentionEnd && $retentionEnd <= date('Y-m-d', strtotime('+30 days'));
                         $storage         = htmlspecialchars($it['storage_location'] ?? '');
                         $timestamp       = htmlspecialchars($it['created_at'] ?? $it['dateEncoded'] ?? '');
                         if ($timestamp && strlen($timestamp) === 10) $timestamp .= ' 00:00:00';
@@ -706,7 +709,13 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                         if ($img) $dataAttrs .= ' data-image="' . $img . '"';
                         $rawStorageG = $it['storage_location'] ?? '';
                         $cancelBtnG  = (trim($rawStorageG) === '') ? '<button type="button" class="found-btn-cancel">Cancel</button>' : '';
-                        echo '<tr' . $dataAttrs . '><td>' . $barcodeId . '</td><td>' . $encodedBy . '</td><td>' . htmlspecialchars($dateSurrendered) . '</td><td>' . htmlspecialchars($retentionEnd) . '</td><td>' . $storage . '</td><td>' . $timestamp . '</td><td class="found-action-cell"><button type="button" class="found-btn-view guest-view-btn">View</button>' . $cancelBtnG . '</td></tr>';
+                        $retBadgeG = '';
+                        if ($isOverdueG) {
+                            $retBadgeG = ' <span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;white-space:nowrap;vertical-align:middle;">EXPIRED</span>';
+                        } elseif ($isExpiringG) {
+                            $retBadgeG = ' <span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;white-space:nowrap;vertical-align:middle;">EXPIRING</span>';
+                        }
+                        echo '<tr' . $dataAttrs . '><td>' . $barcodeId . '</td><td>' . $encodedBy . '</td><td>' . htmlspecialchars($dateSurrendered) . '</td><td>' . htmlspecialchars($retentionEnd) . $retBadgeG . '</td><td>' . $storage . '</td><td>' . $timestamp . '</td><td class="found-action-cell"><button type="button" class="found-btn-view guest-view-btn">View</button>' . $cancelBtnG . '</td></tr>';
                     }
                 }
                 ?>
@@ -928,7 +937,6 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                 <label class="report-form-label" for="encodeDateSurrendered">Date Surrendered:</label>
                 <div class="report-form-field report-date-wrap">
                     <input type="date" id="encodeDateSurrendered" name="date_surrendered" class="report-input report-date" title="Pick a date">
-                    <span class="report-date-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
                 </div>
             </div>
             <!-- Inline photo field -->
@@ -1101,7 +1109,6 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                 <label class="report-form-label" for="confirmDateSurrendered">Date Surrendered:</label>
                 <div class="report-form-field report-date-wrap">
                     <input type="date" id="confirmDateSurrendered" name="date_surrendered" class="report-input report-date" title="Pick a date">
-                    <span class="report-date-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
                 </div>
             </div>
             <div class="report-form-row">
@@ -1259,7 +1266,6 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                 <label class="report-form-label" for="encodeReportDateLost">Date Lost:</label>
                 <div class="report-form-field report-date-wrap">
                     <input type="date" id="encodeReportDateLost" name="date_lost" class="report-input report-date" title="Pick a date">
-                    <span class="report-date-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
                 </div>
             </div>
             <!-- Inline photo field -->
@@ -1545,7 +1551,6 @@ $deleteItemUrl = $viewItemBaseUrl . '/delete_item.php';
                 <label class="report-form-label" for="reportDateLost">Date Lost:</label>
                 <div class="report-form-field report-date-wrap">
                     <input type="date" id="reportDateLost" name="date_lost" class="report-input report-date" title="Pick a date">
-                    <span class="report-date-icon" aria-hidden="true"><i class="fa-regular fa-calendar"></i></span>
                 </div>
             </div>
             <div class="report-form-row report-form-row-textarea">
@@ -1665,30 +1670,66 @@ var LOSTANDFOUND_DELETE_ITEM_URL = <?php echo json_encode($deleteItemUrl); ?>;
     }
 })();
 
-(function () {
-    var input = document.getElementById('adminSearchInput');
-    var clearBtn = document.getElementById('adminSearchClear');
-    if (!input || !clearBtn) return;
-    function syncClear() {
-        clearBtn.style.display = input.value ? 'flex' : 'none';
-    }
-    clearBtn.addEventListener('click', function () {
-        input.value = '';
-        input.focus();
-        syncClear();
-    });
-    input.addEventListener('input', syncClear);
-    syncClear();
-    var searchForm = input.closest('form');
-    if (searchForm) {
-        searchForm.addEventListener('submit', function (e) {
-            var q = (input.value || '').trim().toUpperCase();
-            if (window.__encodedItems && q && window.__encodedItems[q]) {
-                e.preventDefault();
-                if (window.openViewModalForEncodedItem) window.openViewModalForEncodedItem(window.__encodedItems[q]);
-            }
-        });
-    }
+/* Search autofill */
+(function(){
+  var input=document.getElementById('adminSearchInput');
+  var clearBtn=document.getElementById('adminSearchClear');
+  var dropdown=document.getElementById('searchDropdown');
+  var form=input?input.closest('form'):null;
+  if(!input||!dropdown)return;
+  var timer=null,lastQ='';
+  function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});}
+  function render(items,q){
+    if(!items||!items.length){dropdown.innerHTML='<div class="sd-no-results">No results for "'+esc(q)+'"</div>';dropdown.style.display='block';return;}
+    dropdown.innerHTML=items.map(function(item){
+      var name=item.item_type||'Item';
+      if(item.brand)name+=' \u2013 '+item.brand;
+      if(item.color)name+=' ('+item.color+')';
+      var meta='';
+      if(item.found_at)meta+='<span class="sd-meta-item"><i class="fa-solid fa-location-dot"></i>'+esc(item.found_at)+'</span>';
+      if(item.date)meta+='<span class="sd-meta-item"><i class="fa-regular fa-calendar"></i>'+esc(item.date)+'</span>';
+      return '<div class="search-dropdown-item" data-id="'+esc(item.id)+'">'+
+        '<div class="sd-icon"><i class="fa-regular fa-file-lines"></i></div>'+
+        '<div class="sd-info">'+
+          '<div class="sd-barcode">'+esc(item.id)+'</div>'+
+          '<div class="sd-title">'+esc(name)+'</div>'+
+          (item.description?'<div class="sd-desc">'+esc(item.description)+'</div>':'')+
+          (meta?'<div class="sd-meta">'+meta+'</div>':'')+
+        '</div></div>';
+    }).join('');
+    dropdown.style.display='block';
+  }
+  function doSearch(q){if(q===lastQ)return;lastQ=q;
+    fetch('search_items.php?q='+encodeURIComponent(q),{credentials:'include'})
+      .then(function(r){return r.json();}).then(function(d){render(d,q);})
+      .catch(function(){dropdown.style.display='none';});
+  }
+  input.addEventListener('input',function(){
+    var v=this.value.trim();
+    if(clearBtn)clearBtn.style.display=v?'flex':'none';
+    clearTimeout(timer);
+    if(v.length<2){dropdown.style.display='none';lastQ='';return;}
+    timer=setTimeout(function(){doSearch(v);},220);
+  });
+  dropdown.addEventListener('click',function(e){
+    var row=e.target.closest('.search-dropdown-item');
+    if(!row)return;
+    var id=row.getAttribute('data-id');
+    if(!id)return;
+    input.value=id;dropdown.style.display='none';
+    if(clearBtn)clearBtn.style.display='flex';
+    var tableRow=document.querySelector('tr[data-id="'+id+'"]');
+    if(tableRow){tableRow.click();return;}
+    if(window.__encodedItems&&window.__encodedItems[id]&&window.openViewModalForEncodedItem){window.openViewModalForEncodedItem(window.__encodedItems[id]);return;}
+    if(form)form.submit();
+  });
+  document.addEventListener('click',function(e){
+    if(!input.contains(e.target)&&!dropdown.contains(e.target))dropdown.style.display='none';
+  });
+  if(clearBtn){
+    clearBtn.addEventListener('click',function(){input.value='';dropdown.style.display='none';lastQ='';clearBtn.style.display='none';input.focus();});
+    clearBtn.style.display=input.value?'flex':'none';
+  }
 })();
 
 (function () {

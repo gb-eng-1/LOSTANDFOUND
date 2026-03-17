@@ -106,6 +106,103 @@ $adminName = $_SESSION['admin_name'] ?? 'Admin';
   cursor: pointer;
   min-width: 130px;
 }
+
+/* ── Item Details Modal (History) ──────────────────────────── */
+.hdm-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1500;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.48);
+}
+.hdm-overlay.open { display: flex; }
+.hdm-modal {
+    background: #fff; border-radius: 12px;
+    width: min(720px, 97vw); max-height: 92vh; overflow-y: auto;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.22);
+    display: flex; flex-direction: column;
+}
+.hdm-header {
+    background: #8b0000; border-radius: 12px 12px 0 0;
+    padding: 14px 20px; display: flex;
+    align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.hdm-header-title { color: #fff; font-size: 16px; font-weight: 700; margin: 0; }
+.hdm-close-btn {
+    background: none; border: none; color: #fff; font-size: 18px;
+    cursor: pointer; padding: 2px 6px; border-radius: 4px;
+    opacity: 0.85; transition: opacity 0.15s; line-height: 1;
+}
+.hdm-close-btn:hover { opacity: 1; }
+.hdm-body { display: flex; flex: 1; min-height: 0; }
+.hdm-left {
+    width: 40%; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 24px 18px 20px;
+    border-right: 1px solid #e5e7eb; background: #fafafa;
+}
+.hdm-photo {
+    width: 160px; height: 120px; object-fit: cover;
+    border-radius: 8px; border: 1px solid #e0e0e0;
+}
+.hdm-photo-placeholder {
+    width: 160px; height: 120px; background: #f3f4f6;
+    border-radius: 8px; border: 1px solid #e0e0e0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px; color: #9ca3af; font-size: 11px;
+}
+.hdm-barcode {
+    margin: 10px 0 0; font-size: 13px; color: #374151;
+    font-weight: 600; text-align: center;
+}
+.hdm-claimant-section {
+    width: 100%; margin-top: 18px;
+}
+.hdm-claimant-title {
+    font-size: 13px; font-weight: 700; color: #8b0000;
+    margin: 0 0 12px; text-align: center;
+    padding-bottom: 6px; border-bottom: 1px solid #e5e7eb;
+}
+.hdm-claimant-field { margin-bottom: 10px; }
+.hdm-claimant-label {
+    display: block; font-size: 11px; color: #6b7280;
+    font-weight: 500; margin-bottom: 4px;
+}
+.hdm-claimant-box {
+    width: 100%; box-sizing: border-box;
+    padding: 7px 10px; border: 1px solid #d1d5db;
+    border-radius: 6px; background: #fff;
+    font-size: 13px; font-weight: 600; color: #111827;
+    min-height: 34px;
+}
+.hdm-right {
+    flex: 1; padding: 24px 26px 20px;
+    display: flex; flex-direction: column;
+}
+.hdm-section-title {
+    font-size: 15px; font-weight: 700; color: #111827;
+    margin: 0 0 14px; text-align: center;
+}
+.hdm-info-row {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 7px 0; border-bottom: 1px solid #f3f4f6;
+}
+.hdm-info-row:last-child { border-bottom: none; }
+.hdm-info-label { font-size: 13px; color: #6b7280; min-width: 120px; flex-shrink: 0; }
+.hdm-info-value { font-size: 13px; font-weight: 700; color: #111827; text-align: right; flex: 1; }
+.hdm-footer {
+    display: flex; justify-content: flex-end;
+    padding: 14px 24px 18px; border-top: 1px solid #e5e7eb; flex-shrink: 0;
+}
+.hdm-btn-close {
+    padding: 9px 24px; border: 1px solid #d1d5db; border-radius: 7px;
+    background: #fff; color: #374151; font-family: Poppins, sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+}
+.hdm-btn-close:hover { background: #f3f4f6; }
+@media (max-width: 560px) {
+    .hdm-body { flex-direction: column; }
+    .hdm-left { width: 100%; border-right: none; border-bottom: 1px solid #e5e7eb; }
+}
 </style>
 </head>
 <body class="history-page">
@@ -132,6 +229,7 @@ $adminName = $_SESSION['admin_name'] ?? 'Admin';
             <div class="topbar-search-wrap topbar-search-left">
                 <form class="search-form" action="FoundAdmin.php" method="get">
                     <input id="adminSearchInput" name="q" type="text" class="search-input" placeholder="Search" autocomplete="off">
+                    <div id="searchDropdown" class="search-dropdown"></div>
                     <button id="adminSearchClear" class="search-clear" type="button" title="Clear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
                     <button class="search-submit" type="submit" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
                 </form>
@@ -203,7 +301,25 @@ $adminName = $_SESSION['admin_name'] ?? 'Admin';
                                     $brand     = htmlspecialchars($it['brand'] ?? '');
                                     $foundBy   = htmlspecialchars($it['found_by'] ?? '');
                                     $img       = isset($it['imageDataUrl']) ? htmlspecialchars($it['imageDataUrl'],ENT_QUOTES,'UTF-8') : '';
-                                    $da = ' data-id="' . $bid . '" data-category="' . $cat . '" data-color="' . $color . '" data-brand="' . $brand . '" data-found-by="' . $foundBy . '" data-date-encoded="' . $dateFnd . '" data-storage-location="' . $storage . '"';
+
+                                    // Parse item_description for modal fields
+                                    $rawDesc = $it['item_description'] ?? '';
+                                    $itemName = '';
+                                    if (preg_match('/^Item(?:\s+Type)?:\s*(.+?)(?:\n|$)/mi', $rawDesc, $dm)) $itemName = trim($dm[1]);
+                                    $claimantName = $claimContact = $dateAccomp = '';
+                                    $claimPos = stripos($rawDesc, '--- Claim Record ---');
+                                    if ($claimPos !== false) {
+                                        $cs = substr($rawDesc, $claimPos);
+                                        if (preg_match('/^Claimed\s+By:\s*(.+?)(?:\n|$)/mi', $cs, $dm)) $claimantName = trim($dm[1]);
+                                        if (preg_match('/^Contact:\s*(.+?)(?:\n|$)/mi', $cs, $dm)) $claimContact = trim($dm[1]);
+                                        if (preg_match('/^Date\s+Accomplished:\s*(.+?)(?:\n|$)/mi', $cs, $dm)) $dateAccomp = trim($dm[1]);
+                                    }
+                                    // Clean description: remove claim record + known metadata prefixes
+                                    $cleanDesc = $claimPos !== false ? substr($rawDesc, 0, $claimPos) : $rawDesc;
+                                    $cleanDesc = preg_replace('/^(Item(?:\s+Type)?|Student Number|Contact|Department):\s*.+\n?/mi', '', $cleanDesc);
+                                    $cleanDesc = trim($cleanDesc);
+
+                                    $da = ' data-id="' . $bid . '" data-category="' . $cat . '" data-color="' . $color . '" data-brand="' . $brand . '" data-found-by="' . $foundBy . '" data-date-encoded="' . $dateFnd . '" data-storage-location="' . $storage . '" data-found-at="' . htmlspecialchars($it['found_at'] ?? '') . '" data-item-name="' . htmlspecialchars($itemName) . '" data-claimant-name="' . htmlspecialchars($claimantName) . '" data-contact="' . htmlspecialchars($claimContact) . '" data-date-accomplished="' . htmlspecialchars($dateAccomp) . '" data-item-description="' . htmlspecialchars($cleanDesc) . '"';
                                     if ($img) $da .= ' data-image="' . $img . '"';
                                     echo '<tr class="matched-data-row"' . $da . '>';
                                     echo '<td>' . $bid . '</td>';
@@ -278,23 +394,50 @@ $adminName = $_SESSION['admin_name'] ?? 'Admin';
     </main>
 </div>
 
-<div id="viewModal" class="view-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="viewModalTitle">
-    <div class="view-modal" onclick="event.stopPropagation()">
-        <div class="view-modal-header">
-            <h3 id="viewModalTitle" class="view-modal-title">Item Details</h3>
-            <button type="button" class="view-modal-close" aria-label="Close" title="Close">&times;</button>
+<!-- Item Details Modal (All Items) -->
+<div id="viewModal" class="hdm-overlay" role="dialog" aria-modal="true" aria-labelledby="hdmTitle"
+     onclick="if(event.target===this)closeHdm()">
+    <div class="hdm-modal" onclick="event.stopPropagation()">
+        <div class="hdm-header">
+            <h3 class="hdm-header-title" id="hdmTitle">Item Details</h3>
+            <button type="button" class="hdm-close-btn" id="hdmCloseBtn" aria-label="Close">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
-        <div class="view-modal-content">
-            <div class="view-modal-left">
-                <h4 class="view-modal-section-title">General Information</h4>
-                <div id="viewModalBody" class="view-modal-body"></div>
-            </div>
-            <div class="view-modal-right">
-                <div id="viewModalImage" class="view-modal-image"></div>
-                <div class="view-modal-print-wrap">
-                    <button type="button" class="view-modal-cancel" id="viewModalCancel">Close</button>
+        <div class="hdm-body">
+            <!-- Left: image + barcode + claimant info -->
+            <div class="hdm-left">
+                <div id="hdmPhotoPlaceholder" class="hdm-photo-placeholder">
+                    <i class="fa-solid fa-box-open" style="font-size:28px;"></i>
+                    <span>No photo</span>
+                </div>
+                <img id="hdmPhoto" class="hdm-photo" src="" alt="Item photo" style="display:none;">
+                <p class="hdm-barcode" id="hdmBarcode">Barcode ID: —</p>
+
+                <div class="hdm-claimant-section">
+                    <h4 class="hdm-claimant-title">Claimant's Information</h4>
+                    <div class="hdm-claimant-field">
+                        <label class="hdm-claimant-label">Name:</label>
+                        <div class="hdm-claimant-box" id="hdmClaimantName">—</div>
+                    </div>
+                    <div class="hdm-claimant-field">
+                        <label class="hdm-claimant-label">Contact Number:</label>
+                        <div class="hdm-claimant-box" id="hdmContact">—</div>
+                    </div>
+                    <div class="hdm-claimant-field">
+                        <label class="hdm-claimant-label">Date of Accomplishment:</label>
+                        <div class="hdm-claimant-box" id="hdmDateAccomp">—</div>
+                    </div>
                 </div>
             </div>
+            <!-- Right: general information -->
+            <div class="hdm-right">
+                <h4 class="hdm-section-title">General Information</h4>
+                <div id="hdmInfoRows"></div>
+            </div>
+        </div>
+        <div class="hdm-footer">
+            <button type="button" class="hdm-btn-close" id="hdmCloseFooter">Close</button>
         </div>
     </div>
 </div>
@@ -344,71 +487,170 @@ $adminName = $_SESSION['admin_name'] ?? 'Admin';
     });
 })();
 
-/* Shared view modal */
+/* ── Item Details Modal (All Items) ─────────────────────────── */
+window.closeHdm = function() {
+    var m = document.getElementById('viewModal');
+    if (m) { m.classList.remove('open'); document.body.style.overflow = ''; }
+};
 (function(){
-    var modal=document.getElementById('viewModal'),
-        imgEl=document.getElementById('viewModalImage'),
-        bidEl=document.getElementById('viewModalBid'),
-        bodyEl=document.getElementById('viewModalBody');
-    if(!modal||!bodyEl) return;
+    var modal = document.getElementById('viewModal');
+    if (!modal) return;
 
-    function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-    function r(label,val){
-        if(!val||String(val).trim()==='') return '';
-        return '<div class="adm-modal-row"><span class="adm-modal-lbl">'+esc(label)+'</span><span class="adm-modal-val">'+esc(String(val))+'</span></div>';
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function infoRow(label, val){
+        if (!val || !String(val).trim()) return '';
+        return '<div class="hdm-info-row"><span class="hdm-info-label">'+esc(label)+'</span><span class="hdm-info-value">'+esc(String(val))+'</span></div>';
     }
-    function setImg(url){
-        if(url){imgEl.innerHTML='<img src="'+esc(url)+'" alt="Item" style="max-width:100%;max-height:180px;border-radius:6px;object-fit:contain;">';}
-        else{imgEl.innerHTML='<div class="adm-modal-imgph"><i class="fa-solid fa-box-open"></i></div>';}
-    }
+
     function openAll(row){
-        var cells=row.querySelectorAll('td');
-        setImg(row.getAttribute('data-image'));
-        if(bidEl) bidEl.textContent=row.getAttribute('data-id')||(cells[0]?cells[0].textContent.trim():'');
-        bodyEl.innerHTML=[
-            r('Category',        row.getAttribute('data-category')),
-            r('Color',           row.getAttribute('data-color')),
-            r('Brand',           row.getAttribute('data-brand')),
-            r('Found At',        cells[2]?cells[2].textContent.trim():''),
-            r('Date Found',      cells[3]?cells[3].textContent.trim():''),
-            r('Date Claimed',    cells[4]?cells[4].textContent.trim():''),
-            r('Storage Location',row.getAttribute('data-storage-location')),
-            r('Timestamp',       cells[6]?cells[6].textContent.trim():''),
-            r('Found By',        row.getAttribute('data-found-by')),
-        ].join('')||'<p style="color:#9ca3af;font-size:13px;">No details available.</p>';
-        modal.classList.add('view-modal-open');
-    }
-    function openGuest(row){
-        var cells=row.querySelectorAll('td');
-        setImg(row.getAttribute('data-image'));
-        if(bidEl) bidEl.textContent=row.getAttribute('data-id')||(cells[0]?cells[0].textContent.trim():'');
-        bodyEl.innerHTML=[
-            r('Category',       row.getAttribute('data-category')),
-            r('Department',     cells[2]?cells[2].textContent.trim():''),
-            r('ID',             cells[3]?cells[3].textContent.trim():''),
-            r('Contact Number', cells[4]?cells[4].textContent.trim():''),
-            r('Date Claimed',   cells[5]?cells[5].textContent.trim():''),
-        ].join('')||'<p style="color:#9ca3af;font-size:13px;">No details available.</p>';
-        modal.classList.add('view-modal-open');
-    }
-    function closeModal(){modal.classList.remove('view-modal-open');}
+        var ph  = document.getElementById('hdmPhotoPlaceholder');
+        var img = document.getElementById('hdmPhoto');
+        var bar = document.getElementById('hdmBarcode');
+        var cn  = document.getElementById('hdmClaimantName');
+        var ct  = document.getElementById('hdmContact');
+        var da  = document.getElementById('hdmDateAccomp');
+        var inf = document.getElementById('hdmInfoRows');
 
-    var tAll=document.getElementById('historyTable');
-    var tGuest=document.getElementById('historyGuestTable');
-    if(tAll) tAll.addEventListener('click',function(e){
-        var btn=e.target.closest('.found-btn-view'); if(!btn) return; e.preventDefault();
-        var row=btn.closest('tr'); if(row&&!row.querySelector('td[colspan]')) openAll(row);
+        var imgUrl = row.getAttribute('data-image');
+        if (imgUrl) { img.src = imgUrl; img.style.display = 'block'; if(ph) ph.style.display = 'none'; }
+        else         { if(img) img.style.display = 'none'; if(ph) ph.style.display = 'flex'; }
+
+        var bid = row.getAttribute('data-id') || '—';
+        if (bar) bar.textContent = 'Barcode ID: ' + bid;
+
+        if (cn) cn.textContent = row.getAttribute('data-claimant-name') || '—';
+        if (ct) ct.textContent = row.getAttribute('data-contact')       || '—';
+        if (da) da.textContent = row.getAttribute('data-date-accomplished') || '—';
+
+        if (inf) inf.innerHTML = [
+            infoRow('Category:',         row.getAttribute('data-category')),
+            infoRow('Item:',             row.getAttribute('data-item-name')),
+            infoRow('Color:',            row.getAttribute('data-color')),
+            infoRow('Brand:',            row.getAttribute('data-brand')),
+            infoRow('Item Description:', row.getAttribute('data-item-description')),
+            infoRow('Storage Location:', row.getAttribute('data-storage-location')),
+            infoRow('Found At:',         row.getAttribute('data-found-at')),
+            infoRow('Found By:',         row.getAttribute('data-found-by')),
+            infoRow('Date Found:',       row.getAttribute('data-date-encoded')),
+        ].join('') || '<p style="color:#9ca3af;font-size:13px;">No details available.</p>';
+
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    /* Guest modal (separate simple modal kept for guest tab) */
+    function openGuest(row){
+        var cells = row.querySelectorAll('td');
+        var ph    = document.getElementById('hdmPhotoPlaceholder');
+        var img   = document.getElementById('hdmPhoto');
+        var bar   = document.getElementById('hdmBarcode');
+        var cn    = document.getElementById('hdmClaimantName');
+        var ct    = document.getElementById('hdmContact');
+        var da    = document.getElementById('hdmDateAccomp');
+        var inf   = document.getElementById('hdmInfoRows');
+
+        var imgUrl = row.getAttribute('data-image');
+        if (imgUrl) { img.src = imgUrl; img.style.display = 'block'; if(ph) ph.style.display = 'none'; }
+        else         { if(img) img.style.display = 'none'; if(ph) ph.style.display = 'flex'; }
+
+        var bid = row.getAttribute('data-id') || '—';
+        if (bar) bar.textContent = 'Barcode ID: ' + bid;
+
+        /* Guest items: claimant section is not applicable — hide it */
+        if (cn) cn.textContent = '—';
+        if (ct) ct.textContent = '—';
+        if (da) da.textContent = cells[5] ? cells[5].textContent.trim() : '—';
+
+        if (inf) inf.innerHTML = [
+            infoRow('Category:',     row.getAttribute('data-category')),
+            infoRow('Department:',   cells[2] ? cells[2].textContent.trim() : ''),
+            infoRow('Student ID:',   cells[3] ? cells[3].textContent.trim() : ''),
+            infoRow('Contact:',      cells[4] ? cells[4].textContent.trim() : ''),
+            infoRow('Date Claimed:', cells[5] ? cells[5].textContent.trim() : ''),
+        ].join('') || '<p style="color:#9ca3af;font-size:13px;">No details available.</p>';
+
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    var tAll   = document.getElementById('historyTable');
+    var tGuest = document.getElementById('historyGuestTable');
+    if (tAll) tAll.addEventListener('click', function(e){
+        var btn = e.target.closest('.found-btn-view'); if (!btn) return; e.preventDefault();
+        var row = btn.closest('tr'); if (row && !row.querySelector('td[colspan]')) openAll(row);
     });
-    if(tGuest) tGuest.addEventListener('click',function(e){
-        var btn=e.target.closest('.found-btn-view-guest'); if(!btn) return; e.preventDefault();
-        var row=btn.closest('tr'); if(row&&!row.querySelector('td[colspan]')) openGuest(row);
+    if (tGuest) tGuest.addEventListener('click', function(e){
+        var btn = e.target.closest('.found-btn-view-guest'); if (!btn) return; e.preventDefault();
+        var row = btn.closest('tr'); if (row && !row.querySelector('td[colspan]')) openGuest(row);
     });
-    var closeBtn=modal.querySelector('.view-modal-close');
-    if(closeBtn) closeBtn.addEventListener('click',closeModal);
-    modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
-    document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
-    var cancelBtn=document.getElementById('viewModalCancel');
-    if(cancelBtn) cancelBtn.addEventListener('click',closeModal);
+
+    var closeBtn = document.getElementById('hdmCloseBtn');
+    var closeFooter = document.getElementById('hdmCloseFooter');
+    if (closeBtn)    closeBtn.addEventListener('click', window.closeHdm);
+    if (closeFooter) closeFooter.addEventListener('click', window.closeHdm);
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') window.closeHdm(); });
+})();
+
+/* Search autofill */
+(function(){
+  var input=document.getElementById('adminSearchInput');
+  var clearBtn=document.getElementById('adminSearchClear');
+  var dropdown=document.getElementById('searchDropdown');
+  var form=input?input.closest('form'):null;
+  if(!input||!dropdown)return;
+  var timer=null,lastQ='';
+  function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});}
+  function render(items,q){
+    if(!items||!items.length){dropdown.innerHTML='<div class="sd-no-results">No results for "'+esc(q)+'"</div>';dropdown.style.display='block';return;}
+    dropdown.innerHTML=items.map(function(item){
+      var name=item.item_type||'Item';
+      if(item.brand)name+=' \u2013 '+item.brand;
+      if(item.color)name+=' ('+item.color+')';
+      var meta='';
+      if(item.found_at)meta+='<span class="sd-meta-item"><i class="fa-solid fa-location-dot"></i>'+esc(item.found_at)+'</span>';
+      if(item.date)meta+='<span class="sd-meta-item"><i class="fa-regular fa-calendar"></i>'+esc(item.date)+'</span>';
+      return '<div class="search-dropdown-item" data-id="'+esc(item.id)+'">'+
+        '<div class="sd-icon"><i class="fa-regular fa-file-lines"></i></div>'+
+        '<div class="sd-info">'+
+          '<div class="sd-barcode">'+esc(item.id)+'</div>'+
+          '<div class="sd-title">'+esc(name)+'</div>'+
+          (item.description?'<div class="sd-desc">'+esc(item.description)+'</div>':'')+
+          (meta?'<div class="sd-meta">'+meta+'</div>':'')+
+        '</div></div>';
+    }).join('');
+    dropdown.style.display='block';
+  }
+  function doSearch(q){if(q===lastQ)return;lastQ=q;
+    fetch('search_items.php?q='+encodeURIComponent(q),{credentials:'include'})
+      .then(function(r){return r.json();}).then(function(d){render(d,q);})
+      .catch(function(){dropdown.style.display='none';});
+  }
+  input.addEventListener('input',function(){
+    var v=this.value.trim();
+    if(clearBtn)clearBtn.style.display=v?'flex':'none';
+    clearTimeout(timer);
+    if(v.length<2){dropdown.style.display='none';lastQ='';return;}
+    timer=setTimeout(function(){doSearch(v);},220);
+  });
+  dropdown.addEventListener('click',function(e){
+    var row=e.target.closest('.search-dropdown-item');
+    if(!row)return;
+    var id=row.getAttribute('data-id');
+    if(!id)return;
+    input.value=id;dropdown.style.display='none';
+    if(clearBtn)clearBtn.style.display='flex';
+    var tableRow=document.querySelector('tr[data-id="'+id+'"]');
+    if(tableRow){tableRow.click();return;}
+    if(window.__encodedItems&&window.__encodedItems[id]&&window.openViewModalForEncodedItem){window.openViewModalForEncodedItem(window.__encodedItems[id]);return;}
+    if(form)form.submit();
+  });
+  document.addEventListener('click',function(e){
+    if(!input.contains(e.target)&&!dropdown.contains(e.target))dropdown.style.display='none';
+  });
+  if(clearBtn){
+    clearBtn.addEventListener('click',function(){input.value='';dropdown.style.display='none';lastQ='';clearBtn.style.display='none';input.focus();});
+    clearBtn.style.display=input.value?'flex':'none';
+  }
 })();
 </script>
 <script src="NotificationsDropdown.js"></script>

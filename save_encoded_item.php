@@ -23,6 +23,18 @@ if (!is_array($item)) {
 
 require __DIR__ . '/config/database.php';
 
+function notifyAdmin($pdo, $type, $title, $message, $relatedId = null) {
+    try {
+        $aid = $pdo->query('SELECT id FROM admins ORDER BY id LIMIT 1')->fetchColumn();
+        if ($aid) {
+            $pdo->prepare(
+                "INSERT INTO notifications (recipient_id, recipient_type, type, title, message, related_id, created_at)
+                 VALUES (?, 'admin', ?, ?, ?, ?, NOW())"
+            )->execute([(int)$aid, $type, $title, $message, $relatedId]);
+        }
+    } catch (Exception $e) { /* non-fatal */ }
+}
+
 // Generate next unique barcode ID (UB + 5-digit number)
 try {
     $stmtMax = $pdo->query("SELECT MAX(CAST(SUBSTRING(id, 3) AS UNSIGNED)) AS max_num FROM items WHERE id LIKE 'UB%' AND LENGTH(id) = 7");
@@ -71,6 +83,12 @@ try {
     if ($qrImg !== false && strlen($qrImg) > 100) {
         @file_put_contents($barcodeFile, $qrImg);
     }
+
+    notifyAdmin($pdo, 'found_item_encoded',
+        'New Found Item Encoded',
+        'A new found item (' . $id . ') has been encoded into the system.',
+        $id
+    );
 
     echo json_encode(['ok' => true, 'id' => $id]);
 } catch (PDOException $e) {

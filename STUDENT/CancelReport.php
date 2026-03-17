@@ -7,6 +7,18 @@
 require_once __DIR__ . '/auth_check.php';
 require_once dirname(__DIR__) . '/config/database.php';
 
+function notifyAdmin($pdo, $type, $title, $message, $relatedId = null) {
+    try {
+        $aid = $pdo->query('SELECT id FROM admins ORDER BY id LIMIT 1')->fetchColumn();
+        if ($aid) {
+            $pdo->prepare(
+                "INSERT INTO notifications (recipient_id, recipient_type, type, title, message, related_id, created_at)
+                 VALUES (?, 'admin', ?, ?, ?, ?, NOW())"
+            )->execute([(int)$aid, $type, $title, $message, $relatedId]);
+        }
+    } catch (Exception $e) { /* non-fatal */ }
+}
+
 header('Content-Type: application/json');
 
 // ── Only accept POST ──────────────────────────────────────────────────────────
@@ -54,7 +66,7 @@ try {
 
     // ── Fetch the report and verify ownership ─────────────────────────────────
     $s = $pdo->prepare(
-        "SELECT id, status, matched_barcode_id FROM items
+        "SELECT id, status, matched_barcode_id, created_at FROM items
           WHERE id = ?
             AND id LIKE 'REF-%'
             AND (user_id IN ($ph) OR LOWER(TRIM(user_id)) = LOWER(?))"
@@ -65,6 +77,14 @@ try {
 
     if (!$report) {
         echo json_encode(['ok' => false, 'message' => 'Report not found or you do not have permission to cancel it.']);
+        exit;
+    }
+
+    // ── Guard: 24-hour cooldown (student only) ────────────────────────────────
+    $createdTs = (int)strtotime($report['created_at'] ?? '');
+    if ($createdTs > 0 && ($createdTs + 86400) > time()) {
+        $cooldownUntil = date('M j, Y \a\t g:i A', $createdTs + 86400);
+        echo json_encode(['ok' => false, 'message' => 'Reports can only be cancelled 24 hours after submission. You may cancel this report after: ' . $cooldownUntil . '.']);
         exit;
     }
 
@@ -129,6 +149,12 @@ try {
     ]);
 
     $pdo->commit();
+
+    notifyAdmin($pdo, 'report_cancelled',
+        'Report Cancelled by Student',
+        'Report ' . $reportId . ' has been cancelled by the student.',
+        $reportId
+    );
 
     echo json_encode(['ok' => true, 'message' => 'Report cancelled successfully.']);
 

@@ -30,7 +30,7 @@ $studentName  = $_SESSION['student_name'] ?? '';
     .nav-menu .nav-item:not(.active) .nav-item-icon,.nav-menu .nav-item:not(.active) .nav-item-icon i,.nav-menu .nav-item:not(.active) .nav-item-label{color:#8b0000!important}
     .main .topbar{flex-shrink:0;z-index:10}
 
-    /* ── Search bar left-aligned ── */
+    /* ── Search bar right-aligned ── */
     .topbar-search-left { justify-content: flex-start !important; padding-left: 0 !important; }
     .topbar-search-left .search-form { max-width: 420px; }
 

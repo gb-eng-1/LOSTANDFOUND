@@ -252,7 +252,7 @@ function extractItemName($desc, $itemType) {
 
     .main .topbar { flex-shrink: 0; z-index: 10; }
 
-    /* ── Search bar left-aligned ── */
+    /* ── Search bar right-aligned ── */
     .topbar-search-left { justify-content: flex-start !important; padding-left: 0 !important; }
     .topbar-search-left .search-form { max-width: 420px; }
 

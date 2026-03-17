@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"search-clear\\\\|search-submit\" /e/xampp/htdocs/LOSTANDFOUND/ADMIN/*.css)"
+    ]
+  }
+}

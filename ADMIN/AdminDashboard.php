@@ -6,6 +6,18 @@
 require_once __DIR__ . '/auth_check.php';
 require_once dirname(__DIR__) . '/config/database.php';
 
+function notifyAdmin($pdo, $type, $title, $message, $relatedId = null) {
+    try {
+        $aid = $pdo->query('SELECT id FROM admins ORDER BY id LIMIT 1')->fetchColumn();
+        if ($aid) {
+            $pdo->prepare(
+                "INSERT INTO notifications (recipient_id, recipient_type, type, title, message, related_id, created_at)
+                 VALUES (?, 'admin', ?, ?, ?, ?, NOW())"
+            )->execute([(int)$aid, $type, $title, $message, $relatedId]);
+        }
+    } catch (Exception $e) { /* non-fatal */ }
+}
+
 // ─── AJAX: Item Details ───────────────────────────────────────────────────────
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'item' && isset($_GET['id'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -176,6 +188,12 @@ if (isset($_POST['ajax']) && $_POST['ajax'] === 'link_ticket') {
         $pdo->prepare("UPDATE items SET status = 'For Verification'     WHERE id = ?")->execute([$foundItemId]);
         $pdo->prepare("UPDATE items SET status = 'Unresolved Claimants' WHERE id = ?")->execute([$lostReportId]);
 
+        notifyAdmin($pdo, 'match_linked',
+            'Items Matched',
+            'Lost report ' . $lostReportId . ' has been matched with found item ' . $foundItemId . '.',
+            $lostReportId
+        );
+
         echo json_encode([
             'ok'      => true,
             'message' => 'Item linked to ticket ' . $lostReportId . '. Status updated to For Verification.',
@@ -192,7 +210,7 @@ $adminName = $_SESSION['admin_name'] ?? 'Admin';
 $stats = ['internal_recovered' => 0, 'external_ids' => 0, 'unresolved' => 0, 'verification' => 0];
 try {
     $stats['internal_recovered'] = (int)$pdo->query("SELECT COUNT(*) FROM items WHERE id NOT LIKE 'REF-%' AND status NOT IN ('Claimed','Resolved','Cancelled')")->fetchColumn();
-    $stats['external_ids']       = (int)$pdo->query("SELECT COUNT(*) FROM items WHERE id LIKE 'REF-%' AND status NOT IN ('Claimed','Cancelled','Resolved')")->fetchColumn();
+    $stats['external_ids']       = (int)$pdo->query("SELECT COUNT(*) FROM items WHERE id NOT LIKE 'REF-%' AND item_type = 'Document & Identification' AND status NOT IN ('Claimed','Resolved','Cancelled','Disposed')")->fetchColumn();
     $stats['unresolved']         = (int)$pdo->query("SELECT COUNT(*) FROM items WHERE status = 'Unresolved Claimants'")->fetchColumn();
     $stats['verification']       = (int)$pdo->query("SELECT COUNT(*) FROM items WHERE status = 'For Verification'")->fetchColumn();
 } catch (PDOException $e) { error_log("AdminDashboard stats: " . $e->getMessage()); }
@@ -201,7 +219,7 @@ try {
 // Unclaimed Items (orange), Unresolved Claimants (red), Unclaimed IDs (purple), For Verification (green)
 $pieData = [];
 try {
-    $unclaimed   = (int)$pdo->query("SELECT COUNT(*) FROM items WHERE id NOT LIKE 'REF-%' AND status = 'Unclaimed Items'")->fetchColumn();
+    $unclaimed   = (int)$pdo->query("SELECT COUNT(*) FROM items WHERE status = 'Unclaimed Items'")->fetchColumn();
     $unclaimedId = $stats['external_ids'];
     $unresolved  = $stats['unresolved'];
     $forVerif    = $stats['verification'];
@@ -245,8 +263,8 @@ try {
     $stmt = $pdo->prepare("
         SELECT item_type, COUNT(*) AS cnt
         FROM items
-        WHERE id NOT LIKE 'REF-%'
-          AND item_type IN ($catPlaceholders)
+        WHERE item_type IN ($catPlaceholders)
+          AND status NOT IN ('Cancelled','Disposed')
         GROUP BY item_type
         ORDER BY cnt DESC
     ");
@@ -295,10 +313,7 @@ try {
 // ─── Recovered IDs (External) ─────────────────────────────────────────────────
 $recoveredExternal = [];
 try {
-    $rows = $pdo->query("SELECT id, found_by, storage_location, date_encoded FROM items WHERE id NOT LIKE 'REF-%' AND item_type IN ('Document & Identification','ID','Document','Identification','IDs & Nameplates') ORDER BY date_encoded DESC LIMIT 7")->fetchAll(PDO::FETCH_ASSOC);
-    if (empty($rows)) {
-        $rows = $pdo->query("SELECT id, found_by, storage_location, date_encoded FROM items WHERE id NOT LIKE 'REF-%' ORDER BY date_encoded DESC LIMIT 7")->fetchAll(PDO::FETCH_ASSOC);
-    }
+    $rows = $pdo->query("SELECT id, found_by, storage_location, date_encoded FROM items WHERE id NOT LIKE 'REF-%' AND item_type = 'Document & Identification' AND status NOT IN ('Claimed','Resolved','Cancelled','Disposed') ORDER BY date_encoded DESC LIMIT 7")->fetchAll(PDO::FETCH_ASSOC);
     foreach ($rows as $r) {
         $recoveredExternal[] = [
             'id'               => $r['id'],
@@ -442,9 +457,10 @@ function fmtDateTime($d) { return $d ? date('M d, Y \a\t g:i A', strtotime($d)) 
 
     <!-- Topbar -->
     <div class="topbar topbar-maroon">
-      <div class="topbar-search-wrap">
+      <div class="topbar-search-wrap topbar-search-left">
         <form class="search-form" action="FoundAdmin.php" method="get">
           <input id="adminSearchInput" name="q" type="text" class="search-input" placeholder="Search" autocomplete="off">
+          <div id="searchDropdown" class="search-dropdown"></div>
           <button id="adminSearchClear" class="search-clear" type="button" title="Clear" aria-label="Clear search"><i class="fa-solid fa-xmark"></i></button>
           <button class="search-submit" type="submit" title="Search" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
         </form>
@@ -815,13 +831,66 @@ var _barData = <?= $barDataJson ?>;
     document.addEventListener('click',function(){dd.classList.remove('open');if(tr)tr.setAttribute('aria-expanded','false');});
 })();
 
-/* Search clear */
+/* Search autofill */
 (function(){
-    var inp=document.getElementById('adminSearchInput'),clr=document.getElementById('adminSearchClear');
-    if(!inp||!clr)return;
-    function s(){clr.style.display=inp.value?'flex':'none';}
-    clr.addEventListener('click',function(){inp.value='';inp.focus();s();});
-    inp.addEventListener('input',s);s();
+  var input=document.getElementById('adminSearchInput');
+  var clearBtn=document.getElementById('adminSearchClear');
+  var dropdown=document.getElementById('searchDropdown');
+  var form=input?input.closest('form'):null;
+  if(!input||!dropdown)return;
+  var timer=null,lastQ='';
+  function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c];});}
+  function render(items,q){
+    if(!items||!items.length){dropdown.innerHTML='<div class="sd-no-results">No results for "'+esc(q)+'"</div>';dropdown.style.display='block';return;}
+    dropdown.innerHTML=items.map(function(item){
+      var name=item.item_type||'Item';
+      if(item.brand)name+=' \u2013 '+item.brand;
+      if(item.color)name+=' ('+item.color+')';
+      var meta='';
+      if(item.found_at)meta+='<span class="sd-meta-item"><i class="fa-solid fa-location-dot"></i>'+esc(item.found_at)+'</span>';
+      if(item.date)meta+='<span class="sd-meta-item"><i class="fa-regular fa-calendar"></i>'+esc(item.date)+'</span>';
+      return '<div class="search-dropdown-item" data-id="'+esc(item.id)+'">'+
+        '<div class="sd-icon"><i class="fa-regular fa-file-lines"></i></div>'+
+        '<div class="sd-info">'+
+          '<div class="sd-barcode">'+esc(item.id)+'</div>'+
+          '<div class="sd-title">'+esc(name)+'</div>'+
+          (item.description?'<div class="sd-desc">'+esc(item.description)+'</div>':'')+
+          (meta?'<div class="sd-meta">'+meta+'</div>':'')+
+        '</div></div>';
+    }).join('');
+    dropdown.style.display='block';
+  }
+  function doSearch(q){if(q===lastQ)return;lastQ=q;
+    fetch('search_items.php?q='+encodeURIComponent(q),{credentials:'include'})
+      .then(function(r){return r.json();}).then(function(d){render(d,q);})
+      .catch(function(){dropdown.style.display='none';});
+  }
+  input.addEventListener('input',function(){
+    var v=this.value.trim();
+    if(clearBtn)clearBtn.style.display=v?'flex':'none';
+    clearTimeout(timer);
+    if(v.length<2){dropdown.style.display='none';lastQ='';return;}
+    timer=setTimeout(function(){doSearch(v);},220);
+  });
+  dropdown.addEventListener('click',function(e){
+    var row=e.target.closest('.search-dropdown-item');
+    if(!row)return;
+    var id=row.getAttribute('data-id');
+    if(!id)return;
+    input.value=id;dropdown.style.display='none';
+    if(clearBtn)clearBtn.style.display='flex';
+    var tableRow=document.querySelector('tr[data-id="'+id+'"]');
+    if(tableRow){tableRow.click();return;}
+    if(window.__encodedItems&&window.__encodedItems[id]&&window.openViewModalForEncodedItem){window.openViewModalForEncodedItem(window.__encodedItems[id]);return;}
+    if(form)form.submit();
+  });
+  document.addEventListener('click',function(e){
+    if(!input.contains(e.target)&&!dropdown.contains(e.target))dropdown.style.display='none';
+  });
+  if(clearBtn){
+    clearBtn.addEventListener('click',function(){input.value='';dropdown.style.display='none';lastQ='';clearBtn.style.display='none';input.focus();});
+    clearBtn.style.display=input.value?'flex':'none';
+  }
 })();
 
 /* Item Details modal — triggered by [data-item-id] clicks anywhere on page */

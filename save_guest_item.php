@@ -23,6 +23,18 @@ if (!is_array($item)) {
 
 require __DIR__ . '/config/database.php';
 
+function notifyAdmin($pdo, $type, $title, $message, $relatedId = null) {
+    try {
+        $aid = $pdo->query('SELECT id FROM admins ORDER BY id LIMIT 1')->fetchColumn();
+        if ($aid) {
+            $pdo->prepare(
+                "INSERT INTO notifications (recipient_id, recipient_type, type, title, message, related_id, created_at)
+                 VALUES (?, 'admin', ?, ?, ?, ?, NOW())"
+            )->execute([(int)$aid, $type, $title, $message, $relatedId]);
+        }
+    } catch (Exception $e) { /* non-fatal */ }
+}
+
 // Barcode ID: use provided or auto-generate (UB + 5-digit, same format as internal items)
 $barcodeId = !empty($item['barcode_id']) ? trim($item['barcode_id']) : null;
 if (!$barcodeId) {
@@ -69,6 +81,12 @@ try {
         ':image_data'       => $imageDataUrl,
         ':status'           => 'Unclaimed IDs External',
     ]);
+
+    notifyAdmin($pdo, 'found_item_encoded',
+        'New Found Item Encoded',
+        'A new found item (' . $barcodeId . ') has been encoded into the system.',
+        $barcodeId
+    );
 
     echo json_encode(['ok' => true, 'id' => $barcodeId]);
 } catch (PDOException $e) {

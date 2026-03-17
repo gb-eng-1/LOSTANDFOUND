@@ -82,16 +82,14 @@ try {
 $myReports = [];
 try {
     if ($hasMatchedCol) { // Query for when matched_barcode_id column exists
-        $sql = "SELECT r.id, r.item_type, r.date_lost, r.item_description, r.matched_barcode_id, r.status, r.created_at, f.status AS found_status, c.status AS claim_status
+        $sql = "SELECT r.id, r.item_type, r.date_lost, r.item_description, r.matched_barcode_id, r.status, r.created_at, f.status AS found_status, NULL AS claim_status
                 FROM items r
                 LEFT JOIN items f ON r.matched_barcode_id = f.id
-                LEFT JOIN claims c ON r.id = c.lost_report_id
                 WHERE r.id LIKE 'REF-%' AND r.status != 'Cancelled' AND (r.user_id IN ($placeholders) OR LOWER(TRIM(r.user_id)) = LOWER(?))
                 ORDER BY r.created_at DESC";
     } else {
-        $sql = "SELECT r.id, r.item_type, r.date_lost, r.item_description, NULL AS matched_barcode_id, r.status, r.created_at, NULL AS found_status, c.status AS claim_status
+        $sql = "SELECT r.id, r.item_type, r.date_lost, r.item_description, NULL AS matched_barcode_id, r.status, r.created_at, NULL AS found_status, NULL AS claim_status
                 FROM items r
-                LEFT JOIN claims c ON r.id = c.lost_report_id
                 WHERE r.id LIKE 'REF-%' AND r.status != 'Cancelled' AND (r.user_id IN ($placeholders) OR LOWER(TRIM(r.user_id)) = LOWER(?))
                 ORDER BY created_at DESC";
     }
@@ -118,6 +116,7 @@ try {
             'status'         => $r['status'] ?? '',
             'found_status'   => $r['found_status'] ?? '',
             'claim_status'   => $r['claim_status'] ?? '',
+            'created_at'     => $r['created_at'] ?? '',
         ];
     }
 } catch (PDOException $e) {
@@ -176,10 +175,9 @@ if ($filter === 'matched' && $hasMatchedCol) {
                 ref.id          AS ref_id,
                 ref.status      AS ref_status,
                 f.status        AS found_status,
-                c.status        AS claim_status
+                NULL            AS claim_status
             FROM items ref
             JOIN items f ON f.id = ref.matched_barcode_id
-            LEFT JOIN claims c ON ref.id = c.lost_report_id
             WHERE ref.id LIKE 'REF-%'
               AND ref.matched_barcode_id IS NOT NULL
               AND (ref.user_id IN ($placeholders) OR LOWER(TRIM(ref.user_id)) = LOWER(?))
@@ -276,7 +274,7 @@ $rlmCategories = [
 
     .main .topbar { flex-shrink: 0; z-index: 10; }
 
-    /* ── Search bar left-aligned ── */
+    /* ── Search bar right-aligned ── */
     .topbar-search-left { justify-content: flex-start !important; padding-left: 0 !important; }
     .topbar-search-left .search-form { max-width: 420px; }
 
@@ -477,8 +475,8 @@ $rlmCategories = [
       transition: background 0.15s;
     }
     .btn-cancel:hover { background: #fef2f2; }
-    .btn-cancel:disabled, .btn-cancel[disabled] {
-      opacity: 0.45; cursor: not-allowed; pointer-events: none;
+    .btn-cancel:disabled, .btn-cancel[disabled], .btn-cancel--cooldown {
+      opacity: 0.45; cursor: not-allowed;
       background: #f9fafb; color: #9ca3af; border-color: #d1d5db;
     }
 
@@ -781,6 +779,9 @@ $rlmCategories = [
                   $isClaimFinalized = in_array($claimStatus, $finalClaimStatuses, true);
 
                   $canCancel = !$isRefNonCancellable && !$isFoundItemClaimed && !$isClaimFinalized;
+                  $createdTs     = $canCancel ? (int)strtotime($r['created_at'] ?? '') : 0;
+                  $isInCooldown  = $createdTs > 0 && ($createdTs + 86400) > time();
+                  $cooldownUntil = $isInCooldown ? date('M j, Y \a\t g:i A', $createdTs + 86400) : '';
               ?>
                 <tr class="<?php echo $i % 2 === 0 ? 'row-even' : 'row-odd'; ?>">
                   <td><?php echo htmlspecialchars($r['ticket_id']); ?></td>
@@ -792,9 +793,11 @@ $rlmCategories = [
                   <td class="action-cell">
                     <button type="button" class="btn-view"
                         data-view-report="<?php echo htmlspecialchars($r['id']); ?>">View</button>
-                    <button type="button" class="btn-cancel"
+                    <button type="button" class="btn-cancel<?php if ($isInCooldown): ?> btn-cancel--cooldown<?php endif; ?>"
                         data-cancel-report="<?php echo htmlspecialchars($r['id']); ?>"
-                        <?php if (!$canCancel): ?>disabled title="This report cannot be cancelled (already claimed, disposed, or resolved)"<?php endif; ?>>
+                        <?php if (!$canCancel && !$isInCooldown): ?>disabled<?php endif; ?>
+                        <?php if ($isInCooldown): ?>data-cooldown-until="<?php echo htmlspecialchars($cooldownUntil); ?>"<?php endif; ?>
+                        <?php if (!$canCancel && !$isInCooldown): ?>title="This report cannot be cancelled (already claimed, disposed, or resolved)"<?php endif; ?>>
                       Cancel
                     </button>
                   </td>
@@ -1240,7 +1243,7 @@ $rlmCategories = [
     var fullDesc = descParts.join('\n');
 
     var payload = {
-      user_id:          '<?php echo addslashes($studentEmail); ?>',
+      student_email:    '<?php echo addslashes($studentEmail); ?>',
       item_type:        fCategory  ? fCategory.value  : '',
       color:            fColor     ? fColor.value.trim()     : '',
       brand:            fBrand     ? fBrand.value.trim()     : '',
@@ -1250,7 +1253,7 @@ $rlmCategories = [
       dateEncoded:      new Date().toISOString().slice(0, 10)
     };
 
-    fetch('save_lost_report.php', {
+    fetch('../save_lost_report.php', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload)
@@ -1523,7 +1526,15 @@ function showReportClaimResult(body, modal, ok, title, msg, ticketId) {
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-cancel-report]');
     if (!btn) return;
-    if (btn.disabled || btn.hasAttribute('disabled')) return; /* greyed-out — do nothing */
+    var cooldownUntil = btn.getAttribute('data-cooldown-until');
+    if (cooldownUntil) {
+      showInlineToast(
+        'Reports can only be cancelled 24 hours after submission. You may cancel this after: ' + cooldownUntil + '.',
+        'warning'
+      );
+      return;
+    }
+    if (btn.disabled || btn.hasAttribute('disabled')) return;
     e.preventDefault();
 
     var reportId = btn.getAttribute('data-cancel-report');
@@ -1580,8 +1591,8 @@ function showReportClaimResult(body, modal, ok, title, msg, ticketId) {
     var existing = document.getElementById('cancelToast');
     if (existing) existing.remove();
 
-    var bg   = type === 'success' ? '#16a34a' : '#dc2626';
-    var icon = type === 'success' ? 'fa-circle-check' : 'fa-circle-xmark';
+    var bg   = type === 'success' ? '#16a34a' : type === 'warning' ? '#d97706' : '#dc2626';
+    var icon = type === 'success' ? 'fa-circle-check' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-xmark';
 
     var toast = document.createElement('div');
     toast.id = 'cancelToast';
